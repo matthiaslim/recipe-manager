@@ -146,6 +146,11 @@ def editProfile():
 def discover():
     return render_template('discover.html')
 
+# Moredetails
+@app.route('/moredetails')
+def moredetails():
+    return render_template('moredetails.html')
+
 # Community
 @app.route('/community')
 def community():
