@@ -127,7 +127,16 @@ section {
     border-radius: 8px;
     margin-left: auto;
 }
-
+.submitbutton {
+    color:white;
+    background-color: black;
+    border: none;
+    text-align: center;
+    display: inline-block;
+    padding: 7px 12px;
+    border-radius: 8px;
+    margin: auto;
+}
 .modal {
     display: none;
     position: fixed;
