@@ -3,9 +3,203 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" type ="text/css" href='/static/style.css' />
+<link rel="stylesheet" type="text/css" href='/static/style.css' />
 <body>
+    <h1 class="text-center mb-5">Community</h1>
     <section>
+        <button id="addCommentButton" class="button">+ Add a Comment</button>
+        <br>
+        <div class="list-group">
+            {% for comment in comments %}
+            <div class="list-group-item">
+                <div class="comment-header">
+                    <h5 class="comment-user">{{ comment.user }}</h5>
+                </div>
+                <p class="comment-text">{{ comment.comment }}</p>
+                <div class="comment-footer">
+                    <i class="fa fa-comments fa-lg"></i>
+                    <span class="comment-count">{{ comment.replies | length }}</span>
+                    <button class="replybutton" data-comment-index="{{ loop.index0 }}">Reply</button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
     </section>
+
+    <!-- Reply Modal -->
+    <div id="replyModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="modal-header" style="justify-content: center;">
+                <h3>Replies</h3>
+            </div>
+            <div class="modal-body">
+                <div id="commentContent" class="comment-content">
+                    <!-- Comment content will be dynamically added here -->
+                </div>
+                <div id="replyContainer" class="reply-container">
+                    <!-- Replies will be dynamically added here -->
+                </div>
+                <div style="display:flex; flex-direction: column; justify-content: center;">
+                    <textarea id="replyInput" placeholder="Add your reply"></textarea>
+                    <button id="submitReply" class="button">Submit Reply</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Comment Modal -->
+    <div id="addCommentModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="modal-header" style="justify-content: center;">
+                <h3>Add a Comment</h3>
+            </div>
+            <div class="modal-body">
+                <div style="display:flex; flex-direction: column; justify-content: center;">
+                    <textarea id="commentInput" placeholder="Add your comment"></textarea>
+                    <button id="submitComment" class="button">Submit Comment</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get the modal elements
+            var replyModal = document.getElementById("replyModal");
+            var addCommentModal = document.getElementById("addCommentModal");
+        
+            // Get the buttons that open the modals
+            var replyButtons = document.getElementsByClassName("replybutton");
+            var addCommentButton = document.getElementById("addCommentButton");
+        
+            // Get the <span> elements that close the modals
+            var closeButtons = document.getElementsByClassName("close");
+        
+            // Convert Jinja comments to JSON
+            var comments = JSON.parse('{{ comments | tojson | safe }}');
+        
+            // Variable to store the current comment index
+            var currentCommentIndex;
+        
+            // Loop through reply buttons and add click event
+            Array.from(replyButtons).forEach(function(btn) {
+                btn.onclick = function() {
+                    currentCommentIndex = this.getAttribute('data-comment-index');
+                    var replies = comments[currentCommentIndex].replies;
+                    var commentText = comments[currentCommentIndex].comment;
+                    var commentUser = comments[currentCommentIndex].user;
+        
+                    var replyContainer = document.getElementById("replyContainer");
+                    var commentContent = document.getElementById("commentContent");
+        
+                    // Clear previous replies and comment content
+                    replyContainer.innerHTML = '';
+                    commentContent.innerHTML = '';
+        
+                    // Add comment content to modal
+                    var commentDiv = document.createElement('div');
+                    commentDiv.className = 'comment';
+                    commentDiv.innerHTML = '<h6 class="comment-user">' + commentUser + '</h6><p class="comment-text">' + commentText + '</p>';
+                    commentContent.appendChild(commentDiv);
+        
+                    // Add replies to modal
+                    replies.forEach(function(reply) {
+                        var replyDiv = document.createElement('div');
+                        replyDiv.className = 'reply';
+                        replyDiv.innerHTML = '<h6 class="reply-user">' + reply.user + '</h6><p class="reply-text">' + reply.reply + '</p>';
+                        replyContainer.appendChild(replyDiv);
+                    });
+        
+                    // Open the reply modal
+                    replyModal.style.display = "block";
+                }
+            });
+        
+            // When the user clicks on add comment button, open the add comment modal
+            addCommentButton.onclick = function() {
+                addCommentModal.style.display = "block";
+            }
+        
+            // When the user clicks on <span> (x), close the modal
+            Array.from(closeButtons).forEach(function(span) {
+                span.onclick = function() {
+                    replyModal.style.display = "none";
+                    addCommentModal.style.display = "none";
+                }
+            });
+        
+            // When the user clicks anywhere outside of the modal, close it
+            window.onclick = function(event) {
+                if (event.target == replyModal || event.target == addCommentModal) {
+                    replyModal.style.display = "none";
+                    addCommentModal.style.display = "none";
+                }
+            }
+        
+            // Handle reply submission
+            document.getElementById('submitReply').onclick = function() {
+                var replyInput = document.getElementById('replyInput').value;
+                
+                if (replyInput) {
+                    fetch('/add_reply', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            comment_index: currentCommentIndex,
+                            reply: replyInput
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Append the new reply to the reply container
+                            var replyDiv = document.createElement('div');
+                            replyDiv.className = 'reply';
+                            replyDiv.innerHTML = '<h6 class="reply-user">' + data.reply.user + '</h6><p class="reply-text">' + data.reply.reply + '</p>';
+                            document.getElementById('replyContainer').appendChild(replyDiv);
+        
+                            // Clear the input field
+                            document.getElementById('replyInput').value = '';
+                        } else {
+                            alert('Error: ' + data.error);
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+                }
+            }
+        
+            // Handle comment submission
+            document.getElementById('submitComment').onclick = function() {
+                var commentInput = document.getElementById('commentInput').value;
+                
+                if (commentInput) {
+                    fetch('/add_comment', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            comment: commentInput
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Reload the page to display the new comment
+                            location.reload();
+                        } else {
+                            alert('Error: ' + data.error);
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+                }
+            }
+        });
+        </script>
+        
 </body>
 {% endblock %}

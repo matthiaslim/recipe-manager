@@ -52,9 +52,158 @@ form {
 }
 section {
     width: auto;
-    border: 1px solid #2d2d2d;
+    /* border: 1px solid #2d2d2d; */
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
 }
 
+.list-group{
+    width: 99.5%;
+}
+.list-group-item {
+    /* border: 1px solid red; */
+    border-bottom: 2px solid black;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 5px;
+    background-color: #eeeeee;
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.comment-user {
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.comment-text {
+    font-size: 1rem;
+    margin: 10px 0;
+}
+
+.comment-footer {
+    display: flex;
+    justify-content: space-between; /* Ensure space between elements */
+    align-items: center;
+}
+
+.comment-footer .fa-comments {
+    margin-right: 5px;
+}
+
+.comment-count {
+    font-size: 0.9rem;
+}
+
+.reply {
+    border-top: 1px solid #e0e0e0;
+    padding-top: 10px;
+    margin-top: 10px;
+}
+
+.reply-user {
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+.reply-text {
+    font-size: 0.9rem;
+    margin: 5px 0;
+}
+.replybutton {
+    color:white;
+    background-color: black;
+    border: none;
+    text-align: center;
+    display: inline-block;
+    padding: 7px 12px;
+    margin: 4px 2px;
+    border-radius: 8px;
+    margin-left: auto;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    /* padding-top: 30px; */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgb(0,0,0);
+    background-color: rgba(0,0,0,0.4);
+}
+
+.modal-content {
+    justify-content: center;
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 70%;
+    max-width: 500px;
+    border-radius: 10px;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.reply-container {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+}
+
+textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    margin-bottom: 10px;
+    resize: vertical;
+}
+
+/* Add Comment Modal Styles */
+#addCommentModal .modal-content {
+    justify-content: center;
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 70%;
+    max-width: 500px;
+    border-radius: 10px;
+}
+
+#addCommentModal .close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+#addCommentModal .close:hover,
+#addCommentModal .close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
