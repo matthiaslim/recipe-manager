@@ -3,36 +3,29 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
-<style>
-    /* Custom Styles */
-    .grey-bg {
-        background-color: #e6e6e7;
-        /* Grey background */
-    }
-</style>
-
-
+<link rel="stylesheet" type ="text/css" href='/static/style.css' />
+<body>
 <div class="pb-5">
     <div class="row justify-content-center">
         <div class="col-md-12">
             <h1 class="text-center mb-5">Welcome to RecipeGenie</h1>
-            <div class="grey-bg p-4 mb-4">
+            <div class="grey-bg">
                 <h3 class="text-center p-3">How RecipeGenie works:</h3>
                 <div class="row p-5">
                     <div class="col-md-4"> 
-                        <div class="mr-2 text-center"><i class="fas fa-search fa-3x"></i></div>
+                        <div class="mr-2 text-center"><i class="fas fa-search fa-3x"></i></div><br>
                         <div class="text-center"> <!-- Description -->
                             Search and we suggest recipes based on your available ingredients
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="mr-2 text-center"><i class="fas fa-save fa-3x"></i></div>
+                        <div class="mr-2 text-center"><i class="fas fa-save fa-3x"></i></div><br>
                         <div class="text-center"> <!-- Description -->
                             Share your recipes and explore creations from other users in our community.
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="mr-2 text-center"><i class="fas fa-users fa-3x"></i></div> <!-- Icon -->
+                        <div class="mr-2 text-center"><i class="fas fa-users fa-3x"></i></div><br> <!-- Icon -->
                         <div class="text-center"> <!-- Description -->
                             Follow the easey-to-use recipes and enjoy your culinary journey.
                         </div>
@@ -46,10 +39,10 @@
                     <br />We inspire creativity in the kitchen and foster a vibrant community of culinary enthusiasts.
                 </p>
             </div>
-            <div class="grey-bg p-4 text-center">
+            <div class="grey-bg">
                 <h2 class="p-3">Contact Us</h2>
                 <form class="ml-5 pl-5 pr-5 mr-5" id="contactForm">
-                    <div class="row">
+                    <div class="container">
                         <div class="form-group col-6">
                             <label for="name">Name:</label>
                             <input type="text" class="form-control" id="name" name="name" required>
@@ -61,15 +54,15 @@
                     </div>
                     <div class="form-group">
                         <label for="message">Message:</label>
-                        <textarea class="form-control" id="message" name="message" rows="3" required></textarea>
+                        <textarea class="container form-control" id="message" name="message" rows="3" required></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary">Submit</button>
+                    <button type="submit" class="button">Submit</button>
                 </form>
             </div>
         </div>
     </div>
 </div>
-
+</body>
 <script>
     document.getElementById('contactForm').addEventListener('submit', function(event) {
         event.preventDefault(); // Prevent the form from submitting the traditional way
