@@ -1,8 +1,20 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 import hashlib  # For hashing passwords
+import mysql.connector # For database connection
+from config import Config
 
 app = Flask(__name__)
+app.config.from_object(Config)  # Load configuration from config.py
 app.secret_key = 'key'  # secret key for session management
+
+# MySQL configurations
+db = mysql.connector.connect(
+    host=app.config['MYSQL_HOST'],
+    user=app.config['MYSQL_USER'],
+    password=app.config['MYSQL_PASSWORD'],
+    database=app.config['MYSQL_DB']
+)
+cursor = db.cursor()
 
 # Mock user database (replace this with your actual user authentication logic)
 users = {
@@ -60,7 +72,12 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        if username in users and users[username]['password'] == password:
+
+        # Check if username and password are correct
+        cursor.execute('SELECT * FROM User WHERE username = %s AND password = %s', (username, password))
+        user = cursor.fetchone()
+
+        if user:
             session['username'] = username  # Store username in session
             return redirect(url_for('index'))
         else:
@@ -73,18 +90,23 @@ def register():
     error = None
     if request.method == 'POST':
         username = request.form['username']
-        email = request.form['email']
         password = request.form['password']
         confirm_password = request.form['confirm_password']
-        
-        if username in users:
+
+        # Check if username already exists
+        cursor.execute('SELECT * FROM User WHERE username = %s', (username,))
+        if cursor.fetchone():
             flash('Username already exists. Please try a different one.', 'danger')
-        elif password != confirm_password:
-            flash('Passwords do not match. Please try again.', 'danger')
+
+        # Insert new user into database
         else:
-            users[username] = {'password': password, 'email': email}
-            flash('Registration successful! Please login.', 'success')
-            return redirect(url_for('login'))
+            if password != confirm_password:
+                flash('Passwords do not match. Please try again.', 'danger')
+            else:
+                cursor.execute('INSERT INTO User (username, password) VALUES (%s, %s)', (username, password))
+                db.commit()
+                flash('Registration successful! Please login.', 'success')
+                return redirect(url_for('login'))
     
     return render_template('register.html', error=error)
 
