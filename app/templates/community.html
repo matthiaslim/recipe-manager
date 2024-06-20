@@ -13,9 +13,9 @@
             {% for comment in comments %}
             <div class="list-group-item">
                 <div class="comment-header">
-                    <h5 class="comment-user">{{ comment.user }}</h5>
+                    <h5 class="comment-user">{{ comment.created_by }}</h5>
                 </div>
-                <p class="comment-text">{{ comment.comment }}</p>
+                <p class="comment-text">{{ comment.threadName }}</p>
                 <div class="comment-footer">
                     <i class="fa fa-comments fa-lg"></i>
                     <span class="comment-count">{{ comment.replies | length }}</span>

@@ -176,6 +176,7 @@ def moredetails():
 # Community
 @app.route('/community')
 def community():
+    comments = get_comments() # Call get_comments functions to get all the threads
     return render_template('community.html', comments=comments)
 
 @app.route('/add_reply', methods=['POST'])
@@ -211,6 +212,27 @@ def add_reply():
             'error': 'Invalid data'
         })
 
+def get_comments():
+    try:
+        cursor.execute('SELECT t.threadID, t.threadName, u.userName FROM Thread t INNER JOIN User u ON t.created_by = u.userID')
+        comments = cursor.fetchall()
+        comments_list = []
+        for comment in comments:
+            comment_dict = {
+                'threadID': comment[0],
+                'threadName': comment[1],
+                'created_by': comment[2]
+            }
+            comments_list.append(comment_dict)
+        
+        return comments_list
+    
+    except mysql.connector.Error as err:
+        return jsonify({
+            'success': False,
+            'error': f"Error fetching comments from database: {err}"
+        }), 500
+
     
 @app.route('/add_comment', methods=['POST'])
 def add_comment():
@@ -220,23 +242,29 @@ def add_comment():
     # Assuming you have a user in the session
     user = session.get('username', 'Anonymous')
     
-    if comment_text:
-        new_comment = {
-            'user': user,
-            'comment': comment_text,
-            'replies': []
-        }
-        comments.append(new_comment)
-        
-        return jsonify({
-            'success': True,
-            'comment': new_comment
-        })
-    else:
+    try:
+        if comment_text:
+            new_comment = {
+                'user': user,
+                'comment': comment_text,
+                'replies': []
+            }
+            comments.append(new_comment)
+            
+            return jsonify({
+                'success': True,
+                'comment': new_comment
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid data'
+            }), 400
+    except mysql.connector.Error as err:
         return jsonify({
             'success': False,
-            'error': 'Invalid data'
-        })
+            'error': f"Error inserting into database: {err}"
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
