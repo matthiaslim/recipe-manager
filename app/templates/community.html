@@ -15,7 +15,7 @@
                 <div class="comment-header">
                     <h5 class="comment-user">{{ comment.created_by }}</h5>
                 </div>
-                <p class="comment-text">{{ comment.threadName }}</p>
+                <p class="comment-text">{{ comment.comment }}</p>
                 <div class="comment-footer">
                     <i class="fa fa-comments fa-lg"></i>
                     <span class="comment-count">{{ comment.replies | length }}</span>
@@ -88,8 +88,8 @@
                 btn.onclick = function() {
                     currentCommentIndex = this.getAttribute('data-comment-index');
                     var replies = comments[currentCommentIndex].replies;
-                    var commentText = comments[currentCommentIndex].comment;
-                    var commentUser = comments[currentCommentIndex].user;
+                    var commentText = comments[currentCommentIndex].threadName;
+                    var commentUser = comments[currentCommentIndex].created_by;
         
                     var replyContainer = document.getElementById("replyContainer");
                     var commentContent = document.getElementById("commentContent");

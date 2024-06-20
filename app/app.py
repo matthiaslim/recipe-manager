@@ -223,7 +223,8 @@ def get_comments():
             comment_dict = {
                 'threadID': comment[0],
                 'threadName': comment[1],
-                'created_by': comment[2]
+                'created_by': comment[2],
+                'replies': []
             }
             comments_list.append(comment_dict)
         
