@@ -78,7 +78,9 @@ def login():
         user = cursor.fetchone()
 
         if user:
+            user_id = user[0]  # userID is the first column
             session['username'] = username  # Store username in session
+            session['user_id'] = user_id
             return redirect(url_for('index'))
         else:
             error = 'Invalid Credentials. Please try again.'
@@ -241,12 +243,21 @@ def add_comment():
     
     # Assuming you have a user in the session
     user = session.get('username', 'Anonymous')
-    
+    user_id = session.get('user_id')
+
     try:
-        if comment_text:
+        if comment_text and user:
+            # Insert thread into Thread table
+            insert_query = "INSERT INTO Thread (threadName, created_by) VALUES (%s, %s)"
+            cursor.execute(insert_query, (comment_text, user_id))
+            db.commit()
+
+            thread_id = cursor.lastrowid
+
             new_comment = {
-                'user': user,
-                'comment': comment_text,
+                'threadID': thread_id,
+                'threadName': comment_text,
+                'created_by': user_id,
                 'replies': []
             }
             comments.append(new_comment)
