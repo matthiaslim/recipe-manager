@@ -178,7 +178,7 @@ def moredetails():
 # Community
 @app.route('/community')
 def community():
-    comments = get_comments() # Call get_comments functions to get all the threads
+    comments = get_threads_with_replies() # Call get_comments functions to get all the threads
     return render_template('community.html', comments=comments)
 
 @app.route('/add_reply', methods=['POST'])
@@ -213,10 +213,27 @@ def add_reply():
             'success': False,
             'error': 'Invalid data'
         })
-
-def get_comments():
+    
+@app.route('/get_replies/<int:thread_id>', methods=['GET'])
+def get_replies(thread_id):
     try:
-        cursor.execute('SELECT t.threadID, t.threadName, u.userName FROM Thread t INNER JOIN User u ON t.created_by = u.userID')
+        cursor.execute('SELECT replyText, created_by FROM Reply WHERE threadID = %s', (thread_id,))
+        replies = cursor.fetchall()
+
+        return jsonify({
+            'success': True,
+            'replies': [{'user': reply[0], 'reply': reply[1]} for reply in replies]
+        })
+    
+    except mysql.connector.Error as err:
+        return jsonify({
+            'success': False,
+            'error': f"Error fetching replies from database: {err}"
+        }), 500
+    
+def get_threads_with_replies():
+    try:
+        cursor.execute('SELECT t.threadID, t.threadName, u.userName, t.reply_count FROM temp_thread_with_replies t INNER JOIN User u ON t.thread_created_by = u.userID')
         comments = cursor.fetchall()
         comments_list = []
         for comment in comments:
@@ -224,6 +241,7 @@ def get_comments():
                 'threadID': comment[0],
                 'threadName': comment[1],
                 'created_by': comment[2],
+                'count': comment[3],
                 'replies': []
             }
             comments_list.append(comment_dict)
@@ -235,6 +253,28 @@ def get_comments():
             'success': False,
             'error': f"Error fetching comments from database: {err}"
         }), 500
+    
+# def get_comments():
+#     try:
+#         cursor.execute('SELECT t.threadID, t.threadName, u.userName FROM Thread t INNER JOIN User u ON t.created_by = u.userID')
+#         comments = cursor.fetchall()
+#         comments_list = []
+#         for comment in comments:
+#             comment_dict = {
+#                 'threadID': comment[0],
+#                 'threadName': comment[1],
+#                 'created_by': comment[2],
+#                 'replies': []
+#             }
+#             comments_list.append(comment_dict)
+        
+#         return comments_list
+    
+#     except mysql.connector.Error as err:
+#         return jsonify({
+#             'success': False,
+#             'error': f"Error fetching comments from database: {err}"
+#         }), 500
 
     
 @app.route('/add_comment', methods=['POST'])

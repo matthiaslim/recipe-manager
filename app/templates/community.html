@@ -15,10 +15,10 @@
                 <div class="comment-header">
                     <h5 class="comment-user">{{ comment.created_by }}</h5>
                 </div>
-                <p class="comment-text">{{ comment.comment }}</p>
+                <p class="comment-text">{{ comment.threadName }}</p>
                 <div class="comment-footer">
                     <i class="fa fa-comments fa-lg"></i>
-                    <span class="comment-count">{{ comment.replies | length }}</span>
+                    <span class="comment-count">{{ comment.count }}</span>
                     <button class="replybutton" data-comment-index="{{ loop.index0 }}">Reply</button>
                 </div>
             </div>
@@ -87,6 +87,7 @@
             Array.from(replyButtons).forEach(function(btn) {
                 btn.onclick = function() {
                     currentCommentIndex = this.getAttribute('data-comment-index');
+                    var threadID = comments[currentCommentIndex].threadID;
                     var replies = comments[currentCommentIndex].replies;
                     var commentText = comments[currentCommentIndex].threadName;
                     var commentUser = comments[currentCommentIndex].created_by;
@@ -98,23 +99,38 @@
                     replyContainer.innerHTML = '';
                     commentContent.innerHTML = '';
         
-                    // Add comment content to modal
-                    var commentDiv = document.createElement('div');
-                    commentDiv.className = 'comment';
-                    commentDiv.innerHTML = '<h6 class="comment-user">' + commentUser + '</h6><p class="comment-text">' + commentText + '</p>';
-                    commentContent.appendChild(commentDiv);
-        
-                    // Add replies to modal
-                    replies.forEach(function(reply) {
-                        var replyDiv = document.createElement('div');
-                        replyDiv.className = 'reply';
-                        replyDiv.innerHTML = '<h6 class="reply-user">' + reply.user + '</h6><p class="reply-text">' + reply.reply + '</p>';
-                        replyContainer.appendChild(replyDiv);
-                    });
-        
-                    // Open the reply modal
-                    replyModal.style.display = "block";
-                }
+                    fetch('/get_replies/' + threadID)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Add comment content to modal
+                                var commentDiv = document.createElement('div');
+                                commentDiv.className = 'comment';
+                                commentDiv.innerHTML = '<h6 class="comment-user">' + commentUser + '</h6><p class="comment-text">' + commentText + '</p>';
+                                commentContent.appendChild(commentDiv);
+
+                                var fetchedReplies = data.replies;
+
+                                // Update the comments array with fetched replies
+                                comments[currentCommentIndex].replies = fetchedReplies;
+                                replies = comments[currentCommentIndex].replies;
+
+                                // Add replies to modal
+                                replies.forEach(function(reply) {
+                                    var replyDiv = document.createElement('div');
+                                    replyDiv.className = 'reply';
+                                    replyDiv.innerHTML = '<h6 class="reply-user">' + reply.user + '</h6><p class="reply-text">' + reply.reply + '</p>';
+                                    replyContainer.appendChild(replyDiv);
+                                });
+
+                                // Open the reply modal
+                                replyModal.style.display = "block";
+                            } else {
+                                console.error('Error:', data.error);
+                            }
+                        })
+                        .catch(error => console.error('Error:', error));
+                };
             });
         
             // When the user clicks on add comment button, open the add comment modal

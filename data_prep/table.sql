@@ -53,14 +53,26 @@ CREATE TABLE IF NOT EXISTS Thread (
     PRIMARY KEY (threadID),
     FOREIGN KEY (created_by) REFERENCES User(userID)
 );
-CREATE TABLE IF NOT EXISTS Comment (
-    commentID int NOT NULL AUTO_INCREMENT,
+CREATE TABLE IF NOT EXISTS Reply (
+    replyID int NOT NULL AUTO_INCREMENT,
     threadID int NOT NULL,
+    replyText varchar(255),
     created_by int,
-    PRIMARY KEY (commentID),
+    PRIMARY KEY (replyID),
     FOREIGN KEY (threadID) REFERENCES Thread(threadID),
     FOREIGN KEY (created_by) REFERENCES User(userID)
 );
+
+CREATE VIEW temp_thread_with_replies AS
+SELECT
+    t.threadID,
+    t.threadName,
+    t.created_by AS thread_created_by,
+    COUNT(r.replyID) AS reply_count
+FROM Thread t
+LEFT JOIN Reply r ON t.threadID = r.threadID
+GROUP BY t.threadID;
+
 -- CREATE TABLE IF NOT EXISTS Nutritional_Value (
 --     ingredientID int NOT NULL,
 --     calories int,
