@@ -46,16 +46,31 @@ CREATE TABLE IF NOT EXISTS Rating (
     FOREIGN KEY (userID) REFERENCES User(userID),
     FOREIGN KEY (recipeID) REFERENCES Recipe(recipeID)
 );
-CREATE TABLE IF NOT EXISTS Nutritional_Value (
-    ingredientID int NOT NULL,
-    calories int,
-    protein int,
-    fats int,
-    cholesterol int,
-    sodium int,
-    choline int,
-    folate int,
-    servingSize int,
-    PRIMARY KEY (ingredientID),
-    FOREIGN KEY (ingredientID) REFERENCES Ingredient(ingredientID)
+CREATE TABLE IF NOT EXISTS Thread (
+    threadID int NOT NULL AUTO_INCREMENT,
+    threadName varchar(255) NOT NULL,
+    created_by int,
+    PRIMARY KEY (threadID),
+    FOREIGN KEY (created_by) REFERENCES User(userID)
 );
+CREATE TABLE IF NOT EXISTS Comment (
+    commentID int NOT NULL AUTO_INCREMENT,
+    threadID int NOT NULL,
+    created_by int,
+    PRIMARY KEY (commentID),
+    FOREIGN KEY (threadID) REFERENCES Thread(threadID),
+    FOREIGN KEY (created_by) REFERENCES User(userID)
+);
+-- CREATE TABLE IF NOT EXISTS Nutritional_Value (
+--     ingredientID int NOT NULL,
+--     calories int,
+--     protein int,
+--     fats int,
+--     cholesterol int,
+--     sodium int,
+--     choline int,
+--     folate int,
+--     servingSize int,
+--     PRIMARY KEY (ingredientID),
+--     FOREIGN KEY (ingredientID) REFERENCES Ingredient(ingredientID)
+-- );
