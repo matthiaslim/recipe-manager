@@ -1,20 +1,12 @@
+import mysql.connector
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 import hashlib  # For hashing passwords
-import mysql.connector # For database connection
+from db import get_db, close_db
 from config import Config
 
 app = Flask(__name__)
 app.config.from_object(Config)  # Load configuration from config.py
 app.secret_key = 'key'  # secret key for session management
-
-# MySQL configurations
-db = mysql.connector.connect(
-    host=app.config['MYSQL_HOST'],
-    user=app.config['MYSQL_USER'],
-    password=app.config['MYSQL_PASSWORD'],
-    database=app.config['MYSQL_DB']
-)
-cursor = db.cursor()
 
 # Mock user database (replace this with your actual user authentication logic)
 users = {}
@@ -25,31 +17,39 @@ users = {}
 # Dummy data for community comments
 comments = []
 
+
 def get_threads_with_replies():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
     try:
-        cursor.execute('SELECT t.threadID, t.threadName, u.userName, t.reply_count FROM temp_thread_with_replies t INNER JOIN User u ON t.thread_created_by = u.userID')
+        cursor.execute(
+            'SELECT t.threadID, t.threadName, u.userName, t.reply_count FROM temp_thread_with_replies t INNER JOIN User u ON t.thread_created_by = u.userID')
         fetched_comments = cursor.fetchall()
         comments_list = []
         for comment in fetched_comments:
             comment_dict = {
-                'threadID': comment[0],
-                'threadName': comment[1],
-                'created_by': comment[2],
-                'count': comment[3],
+                'threadID': comment['threadID'],
+                'threadName': comment['threadName'],
+                'created_by': comment['username'],
+                'count': comment['reply_count'],
                 'replies': []
             }
             comments_list.append(comment_dict)
-        
+
         global comments
         comments = comments_list
-        
+
         return comments_list
-    
+
     except mysql.connector.Error as err:
         return jsonify({
             'success': False,
             'error': f"Error fetching comments from database: {err}"
         }), 500
+
+    finally:
+        cursor.close()
+
 
 # comments = get_threads_with_replies() # get all the threads
 
@@ -91,35 +91,45 @@ def get_threads_with_replies():
 def inject_user():
     return dict(user_logged_in='username' in session, username=session.get('username'))
 
+
 # Index
 @app.route('/')
 def index():
     return render_template('index.html')
 
+
 # Login
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    error = None
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
 
-        # Check if username and password are correct
-        cursor.execute('SELECT * FROM User WHERE username = %s AND password = %s', (username, password))
-        user = cursor.fetchone()
+        try:
+            db = get_db()
+            cursor = db.cursor(dictionary=True)
+            cursor.execute('SELECT * FROM User WHERE username = %s', (username,))
+            user = cursor.fetchone()
 
-        if user:
-            user_id = user[0]  # userID is the first column
-            session['username'] = username  # Store username in session
-            session['user_id'] = user_id
-            return redirect(url_for('index'))
-        else:
-            error = 'Invalid Credentials. Please try again.'
-    return render_template('login.html', error=error)
+            if user:
+                session['username'] = username
+                session['user_id'] = user['userID']
+                flash('You were logged in.', 'success')
+                return redirect(url_for('index'))
+            else:
+                flash('Invalid username or password. Please try again.', 'danger')
+
+        except mysql.connector.Error as err:
+            flash(f"Database error: {err}", 'danger')
+
+    return render_template('login.html')
+
 
 # Register
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
     error = None
     if request.method == 'POST':
         username = request.form['username']
@@ -140,14 +150,16 @@ def register():
                 db.commit()
                 flash('Registration successful! Please login.', 'success')
                 return redirect(url_for('login'))
-    
+
     return render_template('register.html', error=error)
+
 
 # Logout
 @app.route('/logout')
 def logout():
     session.pop('username', None)  # Remove username from session
     return redirect(url_for('index'))
+
 
 # Profile
 @app.route('/profile')
@@ -158,6 +170,7 @@ def profile():
             user = users[username]
             return render_template('profile.html', user=user)
     return redirect(url_for('login'))
+
 
 # Edit Profile
 @app.route('/editProfile', methods=['GET', 'POST'])
@@ -173,7 +186,7 @@ def editProfile():
             if new_password != confirm_password:
                 flash('Passwords do not match. Please try again.', 'danger')
                 return redirect(url_for('editProfile'))
-            
+
             # Update user data if fields are not empty
             if new_username and new_username != current_username:
                 users[new_username] = users.pop(current_username)
@@ -186,25 +199,113 @@ def editProfile():
                 users[new_username]['email'] = new_email
             if new_password:
                 users[new_username]['password'] = new_password
-            
+
             flash('Profile updated successfully!', 'success')
             return redirect(url_for('profile'))
-        
+
         # Pass current user data to edit profile form
         user = users[current_username]
         return render_template('editProfile.html', user=user)
-    
+
     return redirect(url_for('login'))
 
-# Discover
-@app.route('/discover')
-def discover():
-    return render_template('discover.html')
 
-# Moredetails
-@app.route('/moredetails')
-def moredetails():
-    return render_template('moredetails.html')
+# Recipe CRUD
+# Get all recipes
+@app.route('/recipes')
+def get_recipes():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    try:
+        cursor.execute('SELECT * FROM Recipe')
+        recipes = cursor.fetchall()
+
+        return render_template('recipes.html', recipes=recipes)
+
+    except mysql.connector.Error as err:
+        flash(f"Database error: {err}", 'danger')
+
+    finally:
+        cursor.close()
+
+
+# Get Recipe
+@app.route('/recipes/<int:recipe_id>')
+def get_recipe_details(recipe_id):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    try:
+        cursor.execute('SELECT * FROM Recipe WHERE recipeID = %s', (recipe_id,))
+        recipe = cursor.fetchone()
+
+        if recipe:
+            return render_template('moredetails.html', recipe=recipe)
+        else:
+            return flash('Recipe not found', 'error'), 404
+
+    except mysql.connector.Error as err:
+        return flash(f"Database error: {err}", 'danger')
+
+    finally:
+        cursor.close()
+        db.close()
+
+
+# Create Recipe
+@app.route('/recipes/create', methods=['POST'])
+def create_recipe():
+    db = get_db()
+    cursor = db.cursor()
+
+    try:
+        recipeName = request.form['recipeName']
+        description = request.form['description']
+        instruction = request.form['instruction']
+        created_by = session.get('user_id')  # Assuming user is logged in
+
+        cursor.execute(
+            'INSERT INTO Recipe (recipeName, description, instruction, created_by) VALUES (%s, %s, %s, %s)',
+            (recipeName, description, instruction, created_by)
+        )
+        db.commit()
+
+        flash('Recipe created!', 'success')
+        return redirect(url_for('get_recipes'))
+
+    except mysql.connector.Error as err:
+        flash('Error creating recipe: {err}', 'danger')
+        return redirect(url_for('get_recipes'))
+
+    finally:
+        cursor.close()
+
+
+# Update Recipe
+@app.route('/recipe/update/<int:recipe_id>', methods=['POST'])
+def update_recipe(recipe_id):
+    db = get_db()
+    cursor = db.cursor()
+
+    try:
+        recipe_name = request.form['recipe_name']
+        description = request.form['description']
+        instruction = request.form['instruction']
+
+        cursor.execute(
+            'UPDATE Recipe SET recipeName=%s, description=%s, instruction=%s WHERE recipeID=%s',
+            (recipe_name, description, instruction, recipe_id)
+        )
+        db.commit()
+
+        return jsonify({'success': True, 'message': 'Recipe updated successfully'})
+
+    except mysql.connector.Error as err:
+        return jsonify({'success': False, 'error': f"Error updating recipe: {err}"}), 500
+
+    finally:
+        cursor.close()
 
 # Community
 @app.route('/community')
@@ -213,8 +314,11 @@ def community():
     comments = get_threads_with_replies()
     return render_template('community.html', comments=comments)
 
+
 @app.route('/get_replies/<int:thread_id>', methods=['GET'])
 def get_replies(thread_id):
+    db = get_db()
+    cursor = db.cursor()
     try:
         cursor.execute('SELECT replyText, created_by FROM Reply WHERE threadID = %s', (thread_id,))
         replies = cursor.fetchall()
@@ -223,13 +327,17 @@ def get_replies(thread_id):
             'success': True,
             'replies': [{'user': reply[0], 'reply': reply[1]} for reply in replies]
         })
-    
+
     except mysql.connector.Error as err:
         return jsonify({
             'success': False,
             'error': f"Error fetching replies from database: {err}"
         }), 500
-    
+
+    finally:
+        cursor.close()
+
+
 # def get_threads_with_replies():
 #     try:
 #         cursor.execute('SELECT t.threadID, t.threadName, u.userName, t.reply_count FROM temp_thread_with_replies t INNER JOIN User u ON t.thread_created_by = u.userID')
@@ -244,9 +352,9 @@ def get_replies(thread_id):
 #                 'replies': []
 #             }
 #             comments_list.append(comment_dict)
-        
+
 #         return comments_list
-    
+
 #     except mysql.connector.Error as err:
 #         return jsonify({
 #             'success': False,
@@ -255,10 +363,13 @@ def get_replies(thread_id):
 
 @app.route('/add_comment', methods=['POST'])
 def add_comment():
+    db = get_db()
+    cursor = db.cursor()
+
     global comments
     data = request.get_json()
     comment_text = data.get('comment')
-    
+
     # Assuming you have a user in the session
     user = session.get('username', 'Anonymous')
     user_id = session.get('user_id')
@@ -280,7 +391,7 @@ def add_comment():
                 'replies': []
             }
             comments.append(new_comment)
-            
+
             return jsonify({
                 'success': True,
                 'comment': new_comment
@@ -295,14 +406,21 @@ def add_comment():
             'success': False,
             'error': f"Error inserting into database: {err}"
         }), 500
-    
+
+    finally:
+        cursor.close()
+
+
 @app.route('/add_reply', methods=['POST'])
 def add_reply():
+    db = get_db()
+    cursor = db.cursor()
+
     global comments
     data = request.get_json()
     comment_index = data.get('comment_index')
     reply_text = data.get('reply')
-    
+
     # Assuming you have a user in the session
     user = session.get('username', 'Anonymous')
     user_id = session.get('user_id')
@@ -323,8 +441,8 @@ def add_reply():
                     'reply': reply_text
                 }
                 comments[comment_index]['replies'].append(new_reply)
-                comments[comment_index]['count']+=1
-                
+                comments[comment_index]['count'] += 1
+
                 return jsonify({
                     'success': True,
                     'reply': new_reply
@@ -339,14 +457,17 @@ def add_reply():
                 'success': False,
                 'error': 'Invalid data'
             }), 400
-        
+
     except mysql.connector.Error as err:
         return jsonify({
             'success': False,
             'error': f"Error inserting into database: {err}"
         }), 500
 
-    
+    finally:
+        cursor.close()
+
+
 # def get_comments():
 #     try:
 #         cursor.execute('SELECT t.threadID, t.threadName, u.userName FROM Thread t INNER JOIN User u ON t.created_by = u.userID')
@@ -360,9 +481,9 @@ def add_reply():
 #                 'replies': []
 #             }
 #             comments_list.append(comment_dict)
-        
+
 #         return comments_list
-    
+
 #     except mysql.connector.Error as err:
 #         return jsonify({
 #             'success': False,
