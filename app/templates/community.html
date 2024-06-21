@@ -181,6 +181,11 @@
                             // Clear the input field
                             document.getElementById('replyInput').value = '';
                             
+                            // Update the count displayed for the comment
+                            var countElement = document.querySelector('.comment-count');
+                            var currentCount = parseInt(countElement.textContent); // Get current count
+                            countElement.textContent = currentCount + 1; // Increment count
+                            
                         } else {
                             alert('Error: ' + data.error);
                         }
