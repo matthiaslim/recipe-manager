@@ -292,6 +292,22 @@ def update_recipe(recipe_id):
         recipe_name = request.form['recipe_name']
         description = request.form['description']
         instruction = request.form['instruction']
+        user_id = session.get('user_id')  # Assuming user is logged in
+
+        # Fetch the creator of the recipe
+        cursor.execute('SELECT created_by FROM Recipe WHERE recipeID = %s', (recipe_id,))
+        recipe = cursor.fetchone()
+
+        if recipe is None:
+            flash('Recipe not found', 'error')
+            return redirect(url_for('discover'))
+
+        creator_id = recipe['created_by']
+
+        # Check if the current user is the creator of the recipe
+        if user_id != creator_id:
+            flash('You are not authorized to update this recipe', 'error')
+            return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
         cursor.execute(
             'UPDATE Recipe SET recipeName=%s, description=%s, instruction=%s WHERE recipeID=%s',
@@ -299,13 +315,54 @@ def update_recipe(recipe_id):
         )
         db.commit()
 
-        return jsonify({'success': True, 'message': 'Recipe updated successfully'})
+        flash('Recipe updated successfully', 'success')
+        return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
     except mysql.connector.Error as err:
-        return jsonify({'success': False, 'error': f"Error updating recipe: {err}"}), 500
+        flash(f"Error updating recipe: {err}", 'error')
+        return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
     finally:
         cursor.close()
+
+
+# Delete Recipe
+@app.route('/recipe/delete/<int:recipe_id>', methods=["POST"])
+def delete_recipe(recipe_id):
+    db = get_db()
+    cursor = db.cursor()
+
+    try:
+        user_id = session.get('user_id')  # Assuming user is logged in
+
+        # Fetch the creator of the recipe
+        cursor.execute('SELECT created_by FROM Recipe WHERE recipeID = %s', (recipe_id,))
+        recipe = cursor.fetchone()
+
+        if recipe is None:
+            flash('Recipe not found', 'error')
+            return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
+
+        creator_id = recipe['created_by']
+
+        # Check if the current user is the creator of the recipe
+        if user_id != creator_id:
+            flash('You are not authorized to delete this recipe', 'error')
+            return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
+
+        cursor.execute('DELETE FROM Recipe WHERE recipeID = %s', (recipe_id,))
+        db.commit()
+
+        flash('Recipe deleted successfully', 'success')
+        return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
+
+    except mysql.connector.Error as err:
+        flash(f"Error deleting recipe: {err}", 'error')
+        return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
+
+    finally:
+        cursor.close()
+
 
 # Community
 @app.route('/community')
