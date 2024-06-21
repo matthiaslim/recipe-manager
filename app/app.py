@@ -28,9 +28,9 @@ comments = []
 def get_threads_with_replies():
     try:
         cursor.execute('SELECT t.threadID, t.threadName, u.userName, t.reply_count FROM temp_thread_with_replies t INNER JOIN User u ON t.thread_created_by = u.userID')
-        comments = cursor.fetchall()
+        fetched_comments = cursor.fetchall()
         comments_list = []
-        for comment in comments:
+        for comment in fetched_comments:
             comment_dict = {
                 'threadID': comment[0],
                 'threadName': comment[1],
@@ -40,6 +40,9 @@ def get_threads_with_replies():
             }
             comments_list.append(comment_dict)
         
+        global comments
+        comments = comments_list
+        
         return comments_list
     
     except mysql.connector.Error as err:
@@ -48,7 +51,7 @@ def get_threads_with_replies():
             'error': f"Error fetching comments from database: {err}"
         }), 500
 
-comments = get_threads_with_replies() # get all the threads
+# comments = get_threads_with_replies() # get all the threads
 
 # comments = [
 #     {
@@ -206,8 +209,8 @@ def moredetails():
 # Community
 @app.route('/community')
 def community():
-    # comments = get_threads_with_replies()
-    # print(comments)
+    global comments
+    comments = get_threads_with_replies()
     return render_template('community.html', comments=comments)
 
 @app.route('/get_replies/<int:thread_id>', methods=['GET'])
@@ -252,6 +255,7 @@ def get_replies(thread_id):
 
 @app.route('/add_comment', methods=['POST'])
 def add_comment():
+    global comments
     data = request.get_json()
     comment_text = data.get('comment')
     
@@ -272,10 +276,10 @@ def add_comment():
                 'threadID': thread_id,
                 'threadName': comment_text,
                 'created_by': user_id,
+                'count': 0,
                 'replies': []
             }
             comments.append(new_comment)
-            print(comments)
             
             return jsonify({
                 'success': True,
@@ -294,7 +298,7 @@ def add_comment():
     
 @app.route('/add_reply', methods=['POST'])
 def add_reply():
-    print(comments)
+    global comments
     data = request.get_json()
     comment_index = data.get('comment_index')
     reply_text = data.get('reply')
