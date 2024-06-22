@@ -45,8 +45,8 @@ CREATE TABLE IF NOT EXISTS Rating (
     PRIMARY KEY (ratingID),
     FOREIGN KEY (userID) REFERENCES User(userID),
     FOREIGN KEY (recipeID) REFERENCES Recipe(recipeID),
-    CHECK (rating >= 1 AND rating <= 5)
-    CONSTRAINT unique_user_recipe_rating UNIQUE (userID, recipeID);
+    CHECK (rating >= 1 AND rating <= 5),
+    CONSTRAINT unique_user_recipe_rating UNIQUE (userID, recipeID)
 );
 CREATE TABLE IF NOT EXISTS Thread (
     threadID int NOT NULL AUTO_INCREMENT,
