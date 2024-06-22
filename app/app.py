@@ -598,7 +598,6 @@ def get_ratings_by_recipe_id(recipeID):
     finally:
         cursor.close()
 
-# Route to update a rating
 @app.route('/update_rating/<int:rating_id>', methods=['PUT'])
 def update_rating(rating_id):
     db = get_db()
@@ -654,6 +653,60 @@ def update_rating(rating_id):
 
     finally:
             cursor.close()
+
+@app.route('/delete_rating/<int:rating_id>', methods=['DELETE'])
+def delete_rating(rating_id):
+    db = get_db()
+    cursor = db.cursor()
+
+    user_id = session.get('user_id')
+
+    # Validate input
+    try:
+        if user_id:
+            # Check if the rating belongs to current user
+            select_query = "SELECT userID FROM Rating WHERE ratingID = %s"
+            cursor.execute(select_query, (rating_id,))
+            result = cursor.fetchone()
+
+            if not result:
+                return jsonify({
+                    'success': False,
+                    'error': 'Rating not found'
+                }), 404
+
+            rating_user_id = result[0]
+
+            if rating_user_id != user_id:
+                return jsonify({
+                    'success': False,
+                    'error': 'You are not authorized to delete this rating'
+                }), 403
+
+            # Delete the rating
+            delete_query = "DELETE FROM Rating WHERE ratingID = %s"
+            cursor.execute(delete_query, (rating_id,))
+            db.commit()
+
+            return jsonify({
+                'success': True,
+                'message': 'Rating deleted successfully'
+            }), 200
+        
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'User is not authenticated'
+            }), 401
+
+    except mysql.connector.Error as err:
+        return jsonify({
+            'success': False,
+            'error': f"Error deleting rating: {err}"
+        }), 500
+
+    finally:
+        cursor.close()
     
 if __name__ == '__main__':
     app.run(debug=True)
