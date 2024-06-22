@@ -183,6 +183,7 @@ def register():
 @app.route('/logout')
 def logout():
     session.pop('username', None)  # Remove username from session
+    session.pop('user_id', None)
     flash('You have been logged out.', 'success')
     return redirect(url_for('index'))
 
@@ -402,7 +403,6 @@ def community():
     comments = get_threads_with_replies()
     return render_template('community.html', comments=comments)
 
-
 @app.route('/get_replies/<int:thread_id>', methods=['GET'])
 def get_replies(thread_id):
     db = get_db()
@@ -424,30 +424,6 @@ def get_replies(thread_id):
 
     finally:
         cursor.close()
-
-
-# def get_threads_with_replies():
-#     try:
-#         cursor.execute('SELECT t.threadID, t.threadName, u.userName, t.reply_count FROM temp_thread_with_replies t INNER JOIN User u ON t.thread_created_by = u.userID')
-#         comments = cursor.fetchall()
-#         comments_list = []
-#         for comment in comments:
-#             comment_dict = {
-#                 'threadID': comment[0],
-#                 'threadName': comment[1],
-#                 'created_by': comment[2],
-#                 'count': comment[3],
-#                 'replies': []
-#             }
-#             comments_list.append(comment_dict)
-
-#         return comments_list
-
-#     except mysql.connector.Error as err:
-#         return jsonify({
-#             'success': False,
-#             'error': f"Error fetching comments from database: {err}"
-#         }), 500
 
 @app.route('/add_comment', methods=['POST'])
 def add_comment():
@@ -554,29 +530,64 @@ def add_reply():
 
     finally:
         cursor.close()
+    
+@app.route('/add_rating', methods=['POST'])
+def add_rating():
+    data = request.get_json()
+    user = session.get('username', 'Anonymous')
+    user_id = session.get('user_id')
+    recipe_id = data.get('recipe_id')
+    rating = data.get('rating')
+    comment = data.get('comment', None)
 
+    # Validate input
+    try:
+        if user and recipe_id and rating is not None:
+            try:
+                insert_query = "INSERT INTO Rating (userID, recipeID, rating, comment) VALUES (%s, %s, %s, %s)"
+                cursor.execute(insert_query, (user_id, recipe_id, rating, comment))
+                db.commit()
+                
+                rating_id = cursor.lastrowid
 
-# def get_comments():
-#     try:
-#         cursor.execute('SELECT t.threadID, t.threadName, u.userName FROM Thread t INNER JOIN User u ON t.created_by = u.userID')
-#         comments = cursor.fetchall()
-#         comments_list = []
-#         for comment in comments:
-#             comment_dict = {
-#                 'threadID': comment[0],
-#                 'threadName': comment[1],
-#                 'created_by': comment[2],
-#                 'replies': []
-#             }
-#             comments_list.append(comment_dict)
+                return jsonify({
+                    'success': True,
+                    'rating_id': rating_id
+                }), 200
 
-#         return comments_list
+            except mysql.connector.Error as err:
+                return jsonify({
+                    'success': False,
+                    'error': f"Error inserting into database: {err}"
+                }), 500
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid Data'
+            }), 400
+    except mysql.connector.Error as err:
+        return jsonify({
+            'success': False,
+            'error': f"Error inserting into database: {err}"
+        }), 500
 
-#     except mysql.connector.Error as err:
-#         return jsonify({
-#             'success': False,
-#             'error': f"Error fetching comments from database: {err}"
-#         }), 500
+@app.route('/get_ratings/<int:recipeID>', methods=['GET'])
+def get_ratings_by_recipe_id(recipeID):
+    try:
+        query = "SELECT * FROM Rating WHERE recipeID = %s"
+        cursor.execute(query, (recipeID,))
+        ratings = cursor.fetchall()
 
+        return jsonify({
+            'success': True,
+            'ratings': ratings
+        }), 200
+
+    except mysql.connector.Error as e:
+        return jsonify({
+            'success': False,
+            'error': f"Error fetching ratings from database: {e}"
+        }), 500
+    
 if __name__ == '__main__':
     app.run(debug=True)
