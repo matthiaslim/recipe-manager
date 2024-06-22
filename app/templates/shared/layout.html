@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>{% block title %}Recipe Genie{% endblock %}</title>
+    <link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href='/static/style.css'/>
@@ -13,9 +14,7 @@
 <body>
 <nav class="navbar navbar-expand-lg bg-body-tertiary bg-light">
     <div class="container-fluid">
-        <a class="navbar-brand text-black"
-           style="color:black; font-weight: bold; font-family: 'Times New Roman', 'Times', monospace;" href="/">Recipe
-            Genie</a>
+        <a class="navbar-brand text-black" href="/">Recipe Genie</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -49,7 +48,7 @@
                 <li><span class="dropdown-item">Welcome, {{ username }}</span></li>
                 <hr/>
                 <li><a class="dropdown-item" href="/profile"><i class="fas fa-user"></i> My Profile</a></li>
-                <li><a class="dropdown-item text-danger" href="#" onclick="confirmLogout(event)"><i
+                <li><a class="dropdown-item text-danger" href="#" onclick="showLogoutModal()"><i
                         class="fa fa-sign-out-alt"></i> Logout</a></li>
                 {% else %}
                 <li><a class="dropdown-item" href="/login">Login</a></li>
@@ -60,8 +59,8 @@
     </div>
 </nav>
 
+<!-- Flash Messages -->
 <div class="container container-fluid mt-3">
-    <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     {% for category, message in messages %}
@@ -76,28 +75,53 @@
     {% endwith %}
 </div>
 
+<!-- Logout Modal -->
+<div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="logoutModalLabel"
+     aria-hidden="true" data-backdrop="false">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalCenterTitle">Confirm Logout</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to logout?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <a class="btn btn-danger" href="{{ url_for('logout') }}">Logout</a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="mt-5">
     {% block content %}{% endblock %}
 </div>
 
 
 <!-- Bootstrap JS -->
-<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.14.7/dist/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
 
 <!-- Confirm Logout Script -->
 <script>
-    function confirmLogout(event) {
-        if (confirm("Are you sure you want to logout?")) {
-            window.location.href = "/logout";
-        } else {
-            event.preventDefault();
-        }
+    function showLogoutModal() {
+        // Show the logout modal
+        $('#logoutModal').modal('show');
     }
 </script>
 
-<!-- Custom JS -->
+<!-- Closing Flash Messages Script -->
 <script>
     $(document).ready(function () {
         // Automatically close flash messages after 3 seconds
