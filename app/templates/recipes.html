@@ -5,76 +5,61 @@
 {% block content %}
 
 <style>
-    ::placeholder {
-        text-align: center;
-    }
-
-    input.nosubmit {
-        padding: 9px 4px 9px 40px;
-        background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' class='bi bi-search' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z'%3E%3C/path%3E%3C/svg%3E") no-repeat 13px center;
-    }
-
     .input-group {
         width: 60%;
-        margin: 0 auto;
+        margin: 20px auto;
+    }
+
+    .table {
+        width: 80%;
+        margin: 20px auto;
+    }
+
+    .table th, .table td {
+        vertical-align: middle;
     }
 
     .add-button {
         position: absolute;
-        right: -200px;
-    }
-
-    .middle {
-        margin-left: 250px;
-        margin-right: 250px;
-    }
-
-    .description {
-        color: grey;
-    }
-
-    a {
-        font-size: 15px;
-    }
-
-    .modal-footer {
-        margin: 0 auto;
-    }
-
-    .modal-footer button {
-        padding-left: 50px;
-        padding-right: 50px;
+        right: 20px;
     }
 </style>
 
-<div class="input-group">
-    <input class="form-control border-end-0 border nosubmit" type="text" placeholder="Search Recipe..">
-    <button class="add-button btn btn-dark rounded-circle" data-toggle="modal" data-target=".bd-example-modal-lg">
-        +
-    </button>
-</div>
-
 <div class="container-fluid text-center">
     <div class="row">
-        {% for recipe in recipes %}
         <div class="col">
-            <p class="text-left">
-                {{ recipe.recipeName }} <br>
-                <span class="description text-left">
-                {{ recipe.description }} <br>
-            </span>
-                <span>
-                <a href="{{ url_for('get_recipe_details', recipe_id=recipe.recipeID) }}" class="text-left">Click here for more details</a>
-            </span>
-            </p>
+            <div class="input-group mb-3">
+                <input id="searchRecipe" class="form-control" type="text" placeholder="Search Recipe..">
+                <button class="btn btn-dark rounded-circle ml-2" data-toggle="modal" data-target=".bd-example-modal-lg">+</button>
+            </div>
         </div>
-        {% endfor %}
     </div>
 </div>
 
+
+<div class="container-fluid text-center">
+    <table id="recipeTable" class="table table-bordered table-hover">
+        <thead class="thead-dark">
+            <tr>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for recipe in recipes %}
+            <tr>
+                <td>{{ recipe.recipeName }}</td>
+                <td>{{ recipe.description }}</td>
+                <td><a href="{{ url_for('get_recipe_details', recipe_id=recipe.recipeID) }}">Details</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
 <!-- Modal -->
-<div class="modal fade bd-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel"
-     aria-hidden="true" data-backdrop="false">
+<div class="modal fade bd-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" aria-hidden="true" data-backdrop="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -84,8 +69,7 @@
                 </button>
             </div>
             <div class="modal-body">
-                <form method="post" action="{{ url_for('create_recipe') }}" enctype="multipart/form-data"
-                      name="addRecipeForm">
+                <form method="post" action="{{ url_for('create_recipe') }}" enctype="multipart/form-data" name="addRecipeForm">
                     <div class="form-group">
                         <label for="recipeName">Title</label>
                         <input type="text" class="form-control" id="recipeName" name="recipeName" required>
@@ -106,4 +90,35 @@
         </div>
     </div>
 </div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.4/js/jquery.dataTables.min.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Target the search input and table
+        const searchInput = document.getElementById('searchRecipe');
+        const tableRows = document.querySelectorAll('#recipeTable tbody tr');
+
+        // Add event listener for input changes
+        searchInput.addEventListener('input', function() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+
+            // Iterate through each table row
+            tableRows.forEach(row => {
+                const title = row.cells[0].textContent.toLowerCase();
+                const description = row.cells[1].textContent.toLowerCase();
+
+                // Show/hide row based on search term match
+                if (title.includes(searchTerm) || description.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    });
+</script>
+
+
+
 {% endblock %}
