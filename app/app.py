@@ -533,6 +533,8 @@ def add_reply():
     
 @app.route('/add_rating', methods=['POST'])
 def add_rating():
+    db = get_db()
+    cursor = db.cursor()
     data = request.get_json()
     user = session.get('username', 'Anonymous')
     user_id = session.get('user_id')
@@ -570,9 +572,13 @@ def add_rating():
             'success': False,
             'error': f"Error inserting into database: {err}"
         }), 500
+    finally:
+        cursor.close()
 
 @app.route('/get_ratings/<int:recipeID>', methods=['GET'])
 def get_ratings_by_recipe_id(recipeID):
+    db = get_db()
+    cursor = db.cursor()
     try:
         query = "SELECT * FROM Rating WHERE recipeID = %s"
         cursor.execute(query, (recipeID,))
@@ -588,6 +594,8 @@ def get_ratings_by_recipe_id(recipeID):
             'success': False,
             'error': f"Error fetching ratings from database: {e}"
         }), 500
+    finally:
+        cursor.close()
     
 if __name__ == '__main__':
     app.run(debug=True)
