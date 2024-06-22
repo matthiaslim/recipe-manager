@@ -597,6 +597,63 @@ def get_ratings_by_recipe_id(recipeID):
         }), 500
     finally:
         cursor.close()
+
+# Route to update a rating
+@app.route('/update_rating/<int:rating_id>', methods=['PUT'])
+def update_rating(rating_id):
+    db = get_db()
+    cursor = db.cursor()
+    
+    data = request.get_json()
+    user = session.get('username', 'Anonymous')
+    user_id = session.get('user_id')
+    rating = data.get('rating')
+    comment = data.get('comment')
+
+    # Validate input
+    try:
+        if user and rating is not None:
+            # Check if the rating belongs to current user
+            select_query = "SELECT userID FROM Rating WHERE ratingID = %s"
+            cursor.execute(select_query, (rating_id,))
+            result = cursor.fetchone()
+            if not result:
+                return jsonify({
+                    'success': False,
+                    'error': 'Rating not found'
+                }), 404
+            
+            rating_user_id = result[0]
+            if rating_user_id != user_id:
+                return jsonify({
+                    'success': False,
+                    'error': 'You are not authorized to update this rating'
+                }), 403
+
+            # Update the rating
+            update_query = "UPDATE Rating SET rating = %s, comment = %s WHERE ratingID = %s"
+            cursor.execute(update_query, (rating, comment, rating_id))
+            db.commit()
+
+            return jsonify({
+                'success': True,
+                'message': 'Rating updated successfully'
+            }), 200
+        
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid Data'
+            }), 400
+
+    except mysql.connector.Error as err:
+            return jsonify({
+                'success': False,
+                'error': f"Error updating rating: {err}"
+            }), 500
+
+    finally:
+            cursor.close()
     
 if __name__ == '__main__':
     app.run(debug=True)
