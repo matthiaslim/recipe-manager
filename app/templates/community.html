@@ -6,6 +6,15 @@
 <link rel="stylesheet" type="text/css" href='/static/style.css' />
 <body>
     <h1 class="text-center mb-5">Community</h1>
+
+    <section>
+        <!-- Search Bar -->
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search for comments...">
+            <button id="searchButton" class="button">Search</button>
+        </div>
+        <br><br><br>
+    </section>
     <section>
         <button id="addCommentButton" class="button">+ Add a Comment</button>
         <br>
@@ -220,8 +229,21 @@
                     .catch(error => console.error('Error:', error));
                 }
             }
-        });
-        </script>
         
+            // Search functionality
+            document.getElementById('searchButton').onclick = function() {
+                var searchQuery = document.getElementById('searchInput').value.toLowerCase();
+                var comments = document.getElementsByClassName('list-group-item');
+                for (var i = 0; i < comments.length; i++) {
+                    var commentText = comments[i].getElementsByClassName('comment-text')[0].innerText.toLowerCase();
+                    if (commentText.includes(searchQuery)) {
+                        comments[i].style.display = '';
+                    } else {
+                        comments[i].style.display = 'none';
+                    }
+                }
+            };
+        });
+    </script>
 </body>
 {% endblock %}

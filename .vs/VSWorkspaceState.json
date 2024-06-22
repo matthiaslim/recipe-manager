@@ -1,0 +1,11 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\app",
+    "\\app\\static",
+    "\\app\\templates",
+    "\\data_prep"
+  ],
+  "SelectedNode": "\\data_prep\\table.sql",
+  "PreviewInSolutionExplorer": false
+}

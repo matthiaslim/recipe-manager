@@ -12,3 +12,9 @@ class Config:
     SESSION_USE_SIGNER = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SECURE = True
+
+# Debugging: Print the values to ensure they are loaded
+print(f"MYSQL_HOST={Config.MYSQL_HOST}")
+print(f"MYSQL_USER={Config.MYSQL_USER}")
+print(f"MYSQL_PASSWORD={Config.MYSQL_PASSWORD}")
+print(f"MYSQL_DB={Config.MYSQL_DB}")

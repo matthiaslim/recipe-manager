@@ -13,7 +13,6 @@ app.secret_key = os.urandom(24)  # secret key for session management
 # Dummy data for community comments
 comments = []
 
-
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -25,26 +24,27 @@ def login_required(f):
     return decorated_function
 
 
-def get_threads_with_replies():
+def get_threads_with_replies(search_query=None):
     db = get_db()
     cursor = db.cursor(dictionary=True)
     try:
-        cursor.execute(
-            'SELECT t.threadID, t.threadName, u.userName, t.reply_count FROM temp_thread_with_replies t INNER JOIN User u ON t.thread_created_by = u.userID')
+        if search_query:
+            cursor.execute(
+                'SELECT t.threadID, t.threadName, u.userName, t.reply_count FROM temp_thread_with_replies t INNER JOIN User u ON t.thread_created_by = u.userID WHERE t.threadName LIKE %s', ('%' + search_query + '%',))
+        else:
+            cursor.execute(
+                'SELECT t.threadID, t.threadName, u.userName, t.reply_count FROM temp_thread_with_replies t INNER JOIN User u ON t.thread_created_by = u.userID')
         fetched_comments = cursor.fetchall()
         comments_list = []
         for comment in fetched_comments:
             comment_dict = {
                 'threadID': comment['threadID'],
                 'threadName': comment['threadName'],
-                'created_by': comment['username'],
-                'count': comment['reply_count'],
+                'created_by': comment.get('userName', 'Unknown'),  # Corrected from 'username' to 'userName'
+                'count': comment.get('reply_count', 0),
                 'replies': []
             }
             comments_list.append(comment_dict)
-
-        global comments
-        comments = comments_list
 
         return comments_list
 
@@ -57,6 +57,7 @@ def get_threads_with_replies():
     finally:
         cursor.close()
         db.close()
+
 
 
 # comments = get_threads_with_replies() # get all the threads
