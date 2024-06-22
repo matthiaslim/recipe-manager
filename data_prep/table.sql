@@ -75,16 +75,48 @@ FROM Thread t
 LEFT JOIN Reply r ON t.threadID = r.threadID
 GROUP BY t.threadID;
 
--- CREATE TABLE IF NOT EXISTS Nutritional_Value (
---     ingredientID int NOT NULL,
---     calories int,
---     protein int,
---     fats int,
---     cholesterol int,
---     sodium int,
---     choline int,
---     folate int,
---     servingSize int,
---     PRIMARY KEY (ingredientID),
---     FOREIGN KEY (ingredientID) REFERENCES Ingredient(ingredientID)
--- );
+DELIMITER //  
+
+CREATE TRIGGER after_insert_rating
+AFTER INSERT ON Rating FOR EACH ROW
+BEGIN
+    UPDATE Recipe
+    SET ratingCount = ratingCount + 1
+    WHERE recipeID = NEW.recipeID;
+
+    UPDATE Recipe
+    SET averageRating = ((averageRating * (ratingCount - 1) + NEW.rating) / ratingCount)
+    WHERE recipeID = NEW.recipeID;
+END //
+
+CREATE TRIGGER after_update_rating
+AFTER UPDATE ON Rating FOR EACH ROW
+BEGIN
+    UPDATE Recipe
+    SET averageRating = ((averageRating * ratingCount - OLD.rating + NEW.rating) / ratingCount)
+    WHERE recipeID = NEW.recipeID;
+END //
+
+CREATE TRIGGER after_delete_rating
+AFTER DELETE ON Rating FOR EACH ROW
+BEGIN
+    DECLARE rating_count INT DEFAULT 0;
+    
+    UPDATE Recipe
+    SET ratingCount = ratingCount - 1
+    WHERE recipeID = OLD.recipeID;
+
+    SET rating_count = (SELECT ratingCount FROM Recipe WHERE recipeID = OLD.recipeID);
+
+    IF rating_count = 0 THEN
+        UPDATE Recipe
+        SET averageRating = 0.0
+        WHERE recipeID = OLD.recipeID;
+    ELSE
+        UPDATE Recipe
+        SET averageRating = ((averageRating * (ratingCount + 1) - OLD.rating) / ratingCount)
+        WHERE recipeID = OLD.recipeID;
+    END IF;
+END //
+
+DELIMITER ;
