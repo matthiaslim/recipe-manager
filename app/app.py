@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-from flask_session import Session
 import mysql.connector
 import os
 from bcrypt import hashpw, gensalt, checkpw
@@ -189,52 +188,77 @@ def logout():
 
 
 # Profile
-# @app.route('/profile')
-# def profile():
-#     if 'username' in session:
-#         username = session['username']
-#         if username in users:
-#             user = users[username]
-#             return render_template('profile.html', user=user)
-#     return redirect(url_for('login'))
+@app.route('/profile')
+@login_required
+def profile():
+    if 'user_id' in session:
+        user_id = session['user_id']
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        try:
+            cursor.execute('SELECT * FROM User WHERE userID = %s', (user_id,))
+            user = cursor.fetchone()
+            if user:
+                # Fetch additional information such as recipes created, threads created, replies made
+                cursor.execute('SELECT COUNT(*) AS recipes_count FROM Recipe WHERE created_by = %s', (user_id,))
+                recipes_count = cursor.fetchone()['recipes_count']
+
+                cursor.execute('SELECT COUNT(*) AS threads_count FROM Thread WHERE created_by = %s', (user_id,))
+                threads_count = cursor.fetchone()['threads_count']
+
+                cursor.execute('SELECT COUNT(*) AS replies_count FROM Reply WHERE created_by = %s', (user_id,))
+                replies_count = cursor.fetchone()['replies_count']
+
+                return render_template('profile.html', user=user, recipes_count=recipes_count,
+                                       threads_count=threads_count, replies_count=replies_count)
+        except mysql.connector.Error as err:
+            flash(f"Error: {err}", 'danger')
+        finally:
+            cursor.close()
+            db.close()
+    return redirect(url_for('login'))
 
 
-# Edit Profile
-# @app.route('/editProfile', methods=['GET', 'POST'])
-# def editProfile():
-#     if 'username' in session:
-#         current_username = session['username']
-#         if request.method == 'POST':
-#             new_username = request.form['username']
-#             new_email = request.form['email']
-#             new_password = request.form['password']
-#             confirm_password = request.form['confirm_password']
-#
-#             if new_password != confirm_password:
-#                 flash('Passwords do not match. Please try again.', 'danger')
-#                 return redirect(url_for('editProfile'))
-#
-#             # Update user data if fields are not empty
-#             if new_username and new_username != current_username:
-#                 users[new_username] = users.pop(current_username)
-#                 users[new_username]['username'] = new_username
-#                 session['username'] = new_username  # Update session with new username
-#             else:
-#                 new_username = current_username
-#
-#             if new_email:
-#                 users[new_username]['email'] = new_email
-#             if new_password:
-#                 users[new_username]['password'] = new_password
-#
-#             flash('Profile updated successfully!', 'success')
-#             return redirect(url_for('profile'))
-#
-#         # Pass current user data to edit profile form
-#         user = users[current_username]
-#         return render_template('editProfile.html', user=user)
-#
-#     return redirect(url_for('login'))
+# Change Password
+@app.route('/profile/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    if 'user_id' in session:
+        user_id = session['user_id']
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        if request.method == 'POST':
+            current_password = request.form['current_password']
+            new_password = request.form['new_password']
+            confirm_password = request.form['confirm_password']
+
+            try:
+                cursor.execute('SELECT password FROM User WHERE userID = %s', (user_id,))
+                user = cursor.fetchone()
+
+                if user and checkpw(current_password.encode(), user['password'].encode()):
+                    if new_password == confirm_password:
+                        hashed_password = hashpw(new_password.encode(), gensalt())
+                        cursor.execute('UPDATE User SET password = %s WHERE userID = %s', (hashed_password, user_id))
+                        db.commit()
+                        flash('Password updated successfully!', 'success')
+                        return redirect(url_for('profile'))
+                    else:
+                        flash('New passwords do not match. Please try again.', 'danger')
+                else:
+                    flash('Current password is incorrect. Please try again.', 'danger')
+
+            except mysql.connector.Error as err:
+                flash(f"Error: {err}", 'danger')
+            finally:
+                cursor.close()
+                db.close()
+                
+        return render_template('change_password.html')
+
+    return redirect(url_for('login'))
 
 
 # Recipe CRUD
@@ -403,6 +427,7 @@ def community():
     comments = get_threads_with_replies()
     return render_template('community.html', comments=comments)
 
+
 @app.route('/get_replies/<int:thread_id>', methods=['GET'])
 def get_replies(thread_id):
     db = get_db()
@@ -424,6 +449,7 @@ def get_replies(thread_id):
 
     finally:
         cursor.close()
+
 
 @app.route('/add_comment', methods=['POST'])
 def add_comment():
@@ -530,12 +556,13 @@ def add_reply():
 
     finally:
         cursor.close()
-    
+
+
 @app.route('/add_rating', methods=['POST'])
 def add_rating():
     db = get_db()
     cursor = db.cursor()
-    
+
     data = request.get_json()
     user = session.get('username', 'Anonymous')
     user_id = session.get('user_id')
@@ -550,7 +577,7 @@ def add_rating():
                 insert_query = "INSERT INTO Rating (userID, recipeID, rating, comment) VALUES (%s, %s, %s, %s)"
                 cursor.execute(insert_query, (user_id, recipe_id, rating, comment))
                 db.commit()
-                
+
                 rating_id = cursor.lastrowid
 
                 return jsonify({
@@ -576,6 +603,7 @@ def add_rating():
     finally:
         cursor.close()
 
+
 @app.route('/get_ratings/<int:recipeID>', methods=['GET'])
 def get_ratings_by_recipe_id(recipeID):
     db = get_db()
@@ -598,11 +626,12 @@ def get_ratings_by_recipe_id(recipeID):
     finally:
         cursor.close()
 
+
 @app.route('/update_rating/<int:rating_id>', methods=['PUT'])
 def update_rating(rating_id):
     db = get_db()
     cursor = db.cursor()
-    
+
     data = request.get_json()
     user = session.get('username', 'Anonymous')
     user_id = session.get('user_id')
@@ -621,7 +650,7 @@ def update_rating(rating_id):
                     'success': False,
                     'error': 'Rating not found'
                 }), 404
-            
+
             rating_user_id = result[0]
             if rating_user_id != user_id:
                 return jsonify({
@@ -638,7 +667,7 @@ def update_rating(rating_id):
                 'success': True,
                 'message': 'Rating updated successfully'
             }), 200
-        
+
         else:
             return jsonify({
                 'success': False,
@@ -646,13 +675,14 @@ def update_rating(rating_id):
             }), 400
 
     except mysql.connector.Error as err:
-            return jsonify({
-                'success': False,
-                'error': f"Error updating rating: {err}"
-            }), 500
+        return jsonify({
+            'success': False,
+            'error': f"Error updating rating: {err}"
+        }), 500
 
     finally:
-            cursor.close()
+        cursor.close()
+
 
 @app.route('/delete_rating/<int:rating_id>', methods=['DELETE'])
 def delete_rating(rating_id):
@@ -692,7 +722,7 @@ def delete_rating(rating_id):
                 'success': True,
                 'message': 'Rating deleted successfully'
             }), 200
-        
+
         else:
             return jsonify({
                 'success': False,
@@ -707,6 +737,7 @@ def delete_rating(rating_id):
 
     finally:
         cursor.close()
-    
+
+
 if __name__ == '__main__':
     app.run(debug=True)
