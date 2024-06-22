@@ -535,6 +535,7 @@ def add_reply():
 def add_rating():
     db = get_db()
     cursor = db.cursor()
+    
     data = request.get_json()
     user = session.get('username', 'Anonymous')
     user_id = session.get('user_id')
