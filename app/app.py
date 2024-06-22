@@ -1,21 +1,29 @@
-import mysql.connector
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-import hashlib  # For hashing passwords
-from db import get_db, close_db
+from flask_session import Session
+import mysql.connector
+import os
+from bcrypt import hashpw, gensalt, checkpw
+from db import get_db
 from config import Config
+from functools import wraps
 
 app = Flask(__name__)
 app.config.from_object(Config)  # Load configuration from config.py
-app.secret_key = 'key'  # secret key for session management
-
-# Mock user database (replace this with your actual user authentication logic)
-users = {}
-# users = {
-#     'admin': {'password': 'password', 'email': 'admin@example.com'}
-# }
+app.secret_key = os.urandom(24)  # secret key for session management
 
 # Dummy data for community comments
 comments = []
+
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('You need to be logged in to access this page!', 'danger')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+
+    return decorated_function
 
 
 def get_threads_with_replies():
@@ -49,6 +57,7 @@ def get_threads_with_replies():
 
     finally:
         cursor.close()
+        db.close()
 
 
 # comments = get_threads_with_replies() # get all the threads
@@ -101,26 +110,32 @@ def index():
 # Login
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
     if request.method == 'POST':
         username = request.form['username']
-        password = request.form['password']
+        entered_password = request.form['password'].encode()
 
         try:
-            db = get_db()
-            cursor = db.cursor(dictionary=True)
             cursor.execute('SELECT * FROM User WHERE username = %s', (username,))
             user = cursor.fetchone()
 
-            if user:
-                session['username'] = username
+            if checkpw(entered_password, user['password'].encode()):
+                session['username'] = user['username']
                 session['user_id'] = user['userID']
-                flash('You were logged in.', 'success')
+                flash('Login Successful!', 'success')
                 return redirect(url_for('index'))
             else:
                 flash('Invalid username or password. Please try again.', 'danger')
+                return redirect(url_for('login'))
 
         except mysql.connector.Error as err:
             flash(f"Database error: {err}", 'danger')
+
+        finally:
+            cursor.close()
+            db.close()
 
     return render_template('login.html')
 
@@ -130,89 +145,101 @@ def login():
 def register():
     db = get_db()
     cursor = db.cursor(dictionary=True)
-    error = None
+
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
         confirm_password = request.form['confirm_password']
 
-        # Check if username already exists
-        cursor.execute('SELECT * FROM User WHERE username = %s', (username,))
-        if cursor.fetchone():
-            flash('Username already exists. Please try a different one.', 'danger')
+        # If password does not match the confirmation
+        if password != confirm_password:
+            flash('Passwords do not match. Please try again.', 'danger')
+            return redirect(url_for('register'))
 
-        # Insert new user into database
-        else:
-            if password != confirm_password:
-                flash('Passwords do not match. Please try again.', 'danger')
+        salt = gensalt()  # Generate a random salt
+        hashed_password = hashpw(password.encode(), salt)  # Hash the password
+
+        try:
+            # Check if username already exists
+            cursor.execute('SELECT * FROM User WHERE username = %s', (username,))
+            if cursor.fetchone():
+                flash('Username already exists. Please try a different one.', 'danger')
             else:
-                cursor.execute('INSERT INTO User (username, password) VALUES (%s, %s)', (username, password))
+                # Insert new user into database
+                cursor.execute('INSERT INTO User (username, password) VALUES (%s, %s)', (username, hashed_password))
                 db.commit()
-                flash('Registration successful! Please login.', 'success')
+                flash('Registration successful!', 'success')
                 return redirect(url_for('login'))
+        except mysql.connector.Error as err:
+            flash(f"Error: {err}", 'danger')
+        finally:
+            cursor.close()
+            db.close()
 
-    return render_template('register.html', error=error)
+    return render_template('register.html')
 
 
 # Logout
 @app.route('/logout')
 def logout():
     session.pop('username', None)  # Remove username from session
+    flash('You have been logged out.', 'success')
     return redirect(url_for('index'))
 
 
 # Profile
-@app.route('/profile')
-def profile():
-    if 'username' in session:
-        username = session['username']
-        if username in users:
-            user = users[username]
-            return render_template('profile.html', user=user)
-    return redirect(url_for('login'))
+# @app.route('/profile')
+# def profile():
+#     if 'username' in session:
+#         username = session['username']
+#         if username in users:
+#             user = users[username]
+#             return render_template('profile.html', user=user)
+#     return redirect(url_for('login'))
 
 
 # Edit Profile
-@app.route('/editProfile', methods=['GET', 'POST'])
-def editProfile():
-    if 'username' in session:
-        current_username = session['username']
-        if request.method == 'POST':
-            new_username = request.form['username']
-            new_email = request.form['email']
-            new_password = request.form['password']
-            confirm_password = request.form['confirm_password']
-
-            if new_password != confirm_password:
-                flash('Passwords do not match. Please try again.', 'danger')
-                return redirect(url_for('editProfile'))
-
-            # Update user data if fields are not empty
-            if new_username and new_username != current_username:
-                users[new_username] = users.pop(current_username)
-                users[new_username]['username'] = new_username
-                session['username'] = new_username  # Update session with new username
-            else:
-                new_username = current_username
-
-            if new_email:
-                users[new_username]['email'] = new_email
-            if new_password:
-                users[new_username]['password'] = new_password
-
-            flash('Profile updated successfully!', 'success')
-            return redirect(url_for('profile'))
-
-        # Pass current user data to edit profile form
-        user = users[current_username]
-        return render_template('editProfile.html', user=user)
-
-    return redirect(url_for('login'))
+# @app.route('/editProfile', methods=['GET', 'POST'])
+# def editProfile():
+#     if 'username' in session:
+#         current_username = session['username']
+#         if request.method == 'POST':
+#             new_username = request.form['username']
+#             new_email = request.form['email']
+#             new_password = request.form['password']
+#             confirm_password = request.form['confirm_password']
+#
+#             if new_password != confirm_password:
+#                 flash('Passwords do not match. Please try again.', 'danger')
+#                 return redirect(url_for('editProfile'))
+#
+#             # Update user data if fields are not empty
+#             if new_username and new_username != current_username:
+#                 users[new_username] = users.pop(current_username)
+#                 users[new_username]['username'] = new_username
+#                 session['username'] = new_username  # Update session with new username
+#             else:
+#                 new_username = current_username
+#
+#             if new_email:
+#                 users[new_username]['email'] = new_email
+#             if new_password:
+#                 users[new_username]['password'] = new_password
+#
+#             flash('Profile updated successfully!', 'success')
+#             return redirect(url_for('profile'))
+#
+#         # Pass current user data to edit profile form
+#         user = users[current_username]
+#         return render_template('editProfile.html', user=user)
+#
+#     return redirect(url_for('login'))
 
 
 # Recipe CRUD
 # Get all recipes
 @app.route('/recipes')
+@login_required
 def get_recipes():
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -232,6 +259,7 @@ def get_recipes():
 
 # Get Recipe
 @app.route('/recipes/<int:recipe_id>')
+@login_required
 def get_recipe_details(recipe_id):
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -243,7 +271,7 @@ def get_recipe_details(recipe_id):
         if recipe:
             return render_template('moredetails.html', recipe=recipe)
         else:
-            return flash('Recipe not found', 'error'), 404
+            return flash('Recipe not found', 'danger')
 
     except mysql.connector.Error as err:
         return flash(f"Database error: {err}", 'danger')
@@ -255,6 +283,7 @@ def get_recipe_details(recipe_id):
 
 # Create Recipe
 @app.route('/recipes/create', methods=['POST'])
+@login_required
 def create_recipe():
     db = get_db()
     cursor = db.cursor()
@@ -284,6 +313,7 @@ def create_recipe():
 
 # Update Recipe
 @app.route('/recipe/update/<int:recipe_id>', methods=['POST'])
+@login_required
 def update_recipe(recipe_id):
     db = get_db()
     cursor = db.cursor()
@@ -299,14 +329,14 @@ def update_recipe(recipe_id):
         recipe = cursor.fetchone()
 
         if recipe is None:
-            flash('Recipe not found', 'error')
+            flash('Recipe not found', 'danger')
             return redirect(url_for('discover'))
 
         creator_id = recipe['created_by']
 
         # Check if the current user is the creator of the recipe
         if user_id != creator_id:
-            flash('You are not authorized to update this recipe', 'error')
+            flash('You are not authorized to update this recipe', 'danger')
             return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
         cursor.execute(
@@ -319,7 +349,7 @@ def update_recipe(recipe_id):
         return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
     except mysql.connector.Error as err:
-        flash(f"Error updating recipe: {err}", 'error')
+        flash(f"Error updating recipe: {err}", 'danger')
         return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
     finally:
@@ -328,6 +358,7 @@ def update_recipe(recipe_id):
 
 # Delete Recipe
 @app.route('/recipe/delete/<int:recipe_id>', methods=["POST"])
+@login_required
 def delete_recipe(recipe_id):
     db = get_db()
     cursor = db.cursor()
@@ -340,14 +371,14 @@ def delete_recipe(recipe_id):
         recipe = cursor.fetchone()
 
         if recipe is None:
-            flash('Recipe not found', 'error')
+            flash('Recipe not found', 'danger')
             return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
         creator_id = recipe['created_by']
 
         # Check if the current user is the creator of the recipe
         if user_id != creator_id:
-            flash('You are not authorized to delete this recipe', 'error')
+            flash('You are not authorized to delete this recipe', 'danger')
             return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
         cursor.execute('DELETE FROM Recipe WHERE recipeID = %s', (recipe_id,))
@@ -357,7 +388,7 @@ def delete_recipe(recipe_id):
         return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
     except mysql.connector.Error as err:
-        flash(f"Error deleting recipe: {err}", 'error')
+        flash(f"Error deleting recipe: {err}", 'danger')
         return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
     finally:

@@ -164,6 +164,3 @@ cython_debug/
 
 # scripts to prep data
 data_prep/*
-
-# config file
-app/config.py
