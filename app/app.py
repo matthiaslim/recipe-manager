@@ -167,7 +167,7 @@ def register():
                 # Insert new user into database
                 cursor.execute('INSERT INTO User (username, password) VALUES (%s, %s)', (username, hashed_password))
                 db.commit()
-                flash('Registration successful!', 'success')
+                # flash('Registration successful!', 'success')
                 return redirect(url_for('login'))
         except mysql.connector.Error as err:
             flash(f"Error: {err}", 'danger')
