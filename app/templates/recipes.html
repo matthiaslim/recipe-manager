@@ -127,8 +127,9 @@
 </div>
 
 <!-- Modal -->
+<!-- Add Recipe Modal -->
 <div class="modal fade bd-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel"
-     aria-hidden="true" data-backdrop="false">
+    aria-hidden="true" data-backdrop="false" id="recipeModal">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -139,7 +140,7 @@
             </div>
             <div class="modal-body">
                 <form method="post" action="{{ url_for('create_recipe') }}" enctype="multipart/form-data"
-                      name="addRecipeForm">
+                    name="addRecipeForm">
                     <div class="form-group">
                         <label for="recipeName">Title</label>
                         <input type="text" class="form-control" id="recipeName" name="recipeName" required>
@@ -149,7 +150,7 @@
                         <input type="text" class="form-control" id="description" name="description" required>
                     </div>
                     <div class="form-group">
-                        <label for="stepsContainer">Steps</label>
+                        <label for="steps">Steps</label>
                         <div id="stepsContainer">
                             <div class="step-input">
                                 <input type="text" class="form-control" name="steps[]" placeholder="Step 1" required>
