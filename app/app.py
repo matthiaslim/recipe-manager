@@ -270,18 +270,24 @@ def get_recipes():
     cursor = db.cursor(dictionary=True)
 
     try:
-        cursor.execute('SELECT * FROM Recipe')
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        # Fetch recipes with creator's username
+        cursor.execute('SELECT Recipe.*, User.username AS username FROM Recipe JOIN User ON Recipe.created_by = User.userID')
         recipes = cursor.fetchall()
 
-        return render_template('recipes.html', recipes=recipes)
+        # Fetch all ingredients
+        cursor.execute('SELECT * FROM Ingredient')
+        ingredients = cursor.fetchall()
+
+        return render_template('recipes.html', recipes=recipes, ingredients=ingredients)
 
     except mysql.connector.Error as err:
         flash(f"Database error: {err}", 'danger')
 
     finally:
         cursor.close()
-        db.close()
-
 
 # Get Recipe
 @app.route('/recipes/<int:recipe_id>')
@@ -568,6 +574,60 @@ def delete_recipe(recipe_id):
         cursor.close()
         db.close()
 
+#Ingredients
+# Add Ingredient
+@app.route('/ingredient/create', methods=['POST'])
+@login_required
+def add_ingredient():
+    if request.method == 'POST':
+        ingredient_name = request.form['ingredientName']
+        try:
+            db = get_db()
+            cursor = db.cursor()
+
+            # Example: Inserting into a table named Ingredient
+            cursor.execute('INSERT INTO Ingredient (ingredientName) VALUES (%s)', (ingredient_name,))
+            db.commit()
+
+            flash('Ingredient added successfully', 'success')
+
+        except mysql.connector.Error as err:
+            flash(f"Error adding ingredient: {err}", 'danger')
+
+        finally:
+            cursor.close()
+            return redirect(url_for('get_recipes'))
+
+# Update Ingredient
+@app.route('/ingredient/update/<int:ingredient_id>', methods=['POST'])
+@login_required
+def update_ingredient(ingredient_id):
+    db = get_db()
+    cursor = db.cursor()
+
+    try:
+        ingredient_name = request.form['ingredientName']
+
+        cursor.execute('SELECT ingredientName FROM Ingredient WHERE ingredientID = %s', (ingredient_id,))
+        ingredient = cursor.fetchone()
+
+        if ingredient is None:
+            flash('Ingredient not found', 'danger')
+            return redirect(url_for('get_recipes'))
+
+        # Perform update in the database
+        cursor.execute('UPDATE Ingredient SET ingredientName=%s WHERE ingredientID=%s', (ingredient_name, ingredient_id))
+        db.commit()
+
+        flash('Ingredient updated successfully', 'success')
+        return redirect(url_for('get_recipes'))  # Adjust this redirection as per your application flow
+
+    except mysql.connector.Error as err:
+        flash(f"Error updating ingredient: {err}", 'danger')
+        return redirect(url_for('get_recipes'))  # Adjust this redirection as per your application flow
+
+    finally:
+        cursor.close()
 
 # Community
 @app.route('/community')
