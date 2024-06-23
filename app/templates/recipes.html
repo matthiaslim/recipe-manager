@@ -1,6 +1,6 @@
 {% extends "shared/layout.html" %}
 
-{% block title %}Discover Recipes{% endblock %}
+{% block title %}Discover Ingredients and Recipes{% endblock %}
 
 {% block content %}
 
@@ -9,6 +9,7 @@
         width: 60%;
         margin: 20px auto;
     }
+
     .table {
         width: 80%;
         margin: 20px auto;
@@ -52,39 +53,33 @@
 <div class="container-fluid text-center">
     <table id="recipeTable" class="table table-bordered table-hover">
         <thead class="thead-dark">
-        <tr>
-            <th>Name</th>
-            <th>Description</th>
-            <th>Rating</th>
-            <th>Recipe By</th>
-            <th>Actions</th>
-        </tr>
+            <tr>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Created By</th>
+                <th>Actions</th>
+            </tr>
         </thead>
         <tbody>
-        {% for recipe in recipes %}
-        <tr class="recipe-row" data-recipe-id="{{ recipe.recipeID }}">
-            <td>{{ recipe.recipeName }}</td>
-            <td>{{ recipe.description }}</td>
-            <td>{% if recipe.averageRating %}
-                {{ recipe.averageRating }} ({{ recipe.ratingCount }})
-                {% else %}
-                Not rated
-                {% endif %}
-            </td>
-            <td>{{ recipe.created_by }}</td>
-            <td>
-                <a href="{{ url_for('get_recipe_details', recipe_id=recipe.recipeID) }}"
+            {% for recipe in recipes %}
+            <tr>
+                <td>{{ recipe.recipeName }}</td>
+                <td>{{ recipe.description }}</td>
+                <td>{{ recipe.username }}</td>
+                <td>
+                    <a href="{{ url_for('get_recipe_details', recipe_id=recipe.recipeID) }}"
                         class="btn btn-primary btn-sm"><i class="fa fa-eye"></i></a>
                     {% if recipe.created_by == session.get('user_id') %}
-                    <button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#updateModal{{ recipe.recipeID }}"><i class="fa fa-pen"></i></button>
+                    <button type="button" class="btn btn-warning btn-sm" data-toggle="modal"
+                        data-target="#updateModal{{ recipe.recipeID }}"><i class="fa fa-pen"></i></button>
                     <form action="{{ url_for('delete_recipe', recipe_id=recipe.recipeID) }}" method="POST"
                         style="display:inline;">
                         <button type="submit" class="btn btn-danger btn-sm"><i class="fa fa-trash"></i></button>
                     </form>
                     {% endif %}
-            </td>
-        </tr>
-        {% endfor %}
+                </td>
+            </tr>
+            {% endfor %}
         </tbody>
     </table>
 </div>
@@ -102,7 +97,6 @@
     </div>
 </div>
 
-<!-- Ingredient -->
 <div class="container-fluid text-center">
     <table id="ingredientTable" class="table table-bordered table-hover">
         <thead class="thead-dark">
@@ -117,8 +111,9 @@
                 <td>{{ ingredient.ingredientName }}</td>
                 <td>
                     <button type="button" class="btn btn-warning btn-sm edit-ingredient-btn" data-toggle="modal"
-                        data-target="#editIngredientModal{{ ingredient.ingredientID }}"><i class="fa fa-pen"></i></button>
-                
+                        data-target="#editIngredientModal{{ ingredient.ingredientID }}"><i
+                            class="fa fa-pen"></i></button>
+
                 </td>
             </tr>
             {% endfor %}
@@ -126,7 +121,8 @@
     </table>
 </div>
 
-<!-- Modal -->
+
+
 <!-- Add Recipe Modal -->
 <div class="modal fade bd-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel"
     aria-hidden="true" data-backdrop="false" id="recipeModal">
@@ -160,13 +156,28 @@
                         <button type="button" class="btn btn-secondary" id="addStepButton">Add Step</button>
                     </div>
                     <div class="form-group">
-                        <label for="ingredients">Ingredients</label><br>
-                        {% for ingredient in ingredients %}
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="ingredient{{ ingredient.ingredientID }}" name="ingredients[]" value="{{ ingredient.ingredientID }}">
-                                <label class="form-check-label" for="ingredient{{ ingredient.ingredientID }}">{{ ingredient.ingredientName }}</label>
+                        <label for="ingredients">Ingredients</label>
+                        <div id="ingredientsContainer">
+                            <div class="ingredient-input">
+                                <input type="text" class="form-control" name="ingredients[]" placeholder="Ingredient"
+                                    required>
+                                <div class="row">
+                                    <div class="col">
+                                        <input type="number" class="form-control" name="quantities[]" placeholder="Qty"
+                                            required>
+                                    </div>
+                                    <div class="col">
+                                        <input type="text" class="form-control" name="units[]" placeholder="Measurement"
+                                            required>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="button"
+                                            class="btn btn-danger remove-ingredient-button">&times;</button>
+                                    </div>
+                                </div>
                             </div>
-                        {% endfor %}
+                        </div>
+                        <button type="button" class="btn btn-secondary mt-3" id="addIngredientButton">Add Ingredient</button>
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-dark" type="submit" name="addRecipeBtn">Add</button>
@@ -176,9 +187,11 @@
         </div>
     </div>
 </div>
+
 {% for recipe in recipes %}
 <!-- Update Recipe Modal-->
-<div class="modal fade" id="updateModal{{ recipe.recipeID }}" tabindex="-1" role="dialog" data-backdrop="false" aria-labelledby="updateModalLabel{{ recipe.recipeID }}" aria-hidden="true">
+<div class="modal fade" id="updateModal{{ recipe.recipeID }}" tabindex="-1" role="dialog" data-backdrop="false"
+    aria-labelledby="updateModalLabel{{ recipe.recipeID }}" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -188,37 +201,68 @@
                 </button>
             </div>
             <div class="modal-body">
-                <form id="updateForm{{ recipe.recipeID }}" method="POST" action="{{ url_for('update_recipe', recipe_id=recipe.recipeID) }}">
+                <form id="updateForm{{ recipe.recipeID }}" method="POST"
+                    action="{{ url_for('update_recipe', recipe_id=recipe.recipeID) }}">
                     <div class="form-group">
                         <label for="recipe_name{{ recipe.recipeID }}">Recipe Name</label>
-                        <input type="text" class="form-control" id="recipe_name{{ recipe.recipeID }}" name="recipe_name" value="{{ recipe.recipeName }}" required>
+                        <input type="text" class="form-control" id="recipe_name{{ recipe.recipeID }}" name="recipe_name"
+                            value="{{ recipe.recipeName }}" required>
                     </div>
                     <div class="form-group">
                         <label for="description{{ recipe.recipeID }}">Description</label>
-                        <textarea class="form-control" id="description{{ recipe.recipeID }}" name="description" rows="5" required>{{ recipe.description }}</textarea>
+                        <textarea class="form-control" id="description{{ recipe.recipeID }}" name="description" rows="5"
+                            required>{{ recipe.description }}</textarea>
                     </div>
                     <div class="form-group">
                         <label for="instruction{{ recipe.recipeID }}">Instruction</label>
-                        <textarea class="form-control" id="instruction{{ recipe.recipeID }}" name="instruction" rows="10" required>{{ recipe.instruction }}</textarea>
+                        <textarea class="form-control" id="instruction{{ recipe.recipeID }}" name="instruction"
+                            rows="10" required>{{ recipe.instruction }}</textarea>
                     </div>
-                    
+
                     <!-- Steps section -->
                     <div class="form-group">
                         <label>Steps</label>
                         <div id="stepsContainer{{ recipe.recipeID }}">
                             {% for step in recipe.steps %}
                             <div class="step-input">
-                                <input type="text" class="form-control" name="steps[]" value="{{ step }}" placeholder="Step {{ loop.index }}" required>
+                                <input type="text" class="form-control" name="steps[]" value="{{ step }}"
+                                    placeholder="Step {{ loop.index }}" required>
                                 {% if loop.index > 1 %}
                                 <button type="button" class="btn btn-danger remove-step-button">&times;</button>
                                 {% endif %}
                             </div>
                             {% endfor %}
                         </div>
-                        <button type="button" class="btn btn-secondary" id="addStepButton{{ recipe.recipeID }}">Add Step</button>
+                        <button type="button" class="btn btn-secondary" id="addStepButton{{ recipe.recipeID }}">Add
+                            Step</button>
                     </div>
-                    
-                    <button type="submit" form="updateForm{{ recipe.recipeID }}" class="btn btn-primary">Update Recipe</button>
+                    <div class="form-group">
+                        <label for="ingredients">Ingredients</label>
+                        <div id="ingredientsContainer">
+                            <div class="ingredient-input">
+                                <input type="text" class="form-control" name="ingredients[]" placeholder="Ingredient"
+                                    required>
+                                <div class="row">
+                                    <div class="col">
+                                        <input type="number" class="form-control" name="quantities[]" placeholder="Qty"
+                                            required>
+                                    </div>
+                                    <div class="col">
+                                        <input type="text" class="form-control" name="units[]" placeholder="Measurement"
+                                            required>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="button"
+                                            class="btn btn-danger remove-ingredient-button">&times;</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary mt-3" id="addIngredientButton">Add Ingredient</button>
+                    </div>
+
+                    <button type="submit" form="updateForm{{ recipe.recipeID }}" class="btn btn-primary">Update
+                        Recipe</button>
                 </form>
             </div>
         </div>
@@ -256,22 +300,27 @@
 
 <!-- Update Ingredient Modals -->
 {% for ingredient in ingredients %}
-<div class="modal fade" id="editIngredientModal{{ ingredient.ingredientID }}" tabindex="-1" role="dialog" aria-labelledby="editIngredientModalLabel{{ ingredient.ingredientID }}" aria-hidden="true" data-backdrop="false">
+<div class="modal fade" id="editIngredientModal{{ ingredient.ingredientID }}" tabindex="-1" role="dialog"
+    aria-labelledby="editIngredientModalLabel{{ ingredient.ingredientID }}" aria-hidden="true" data-backdrop="false">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="editIngredientModalLabel{{ ingredient.ingredientID }}">Update Ingredient</h5>
+                <h5 class="modal-title" id="editIngredientModalLabel{{ ingredient.ingredientID }}">Update Ingredient
+                </h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body">
-                <form id="updateIngredientForm{{ ingredient.ingredientID }}" method="POST" action="{{ url_for('update_ingredient', ingredient_id=ingredient.ingredientID) }}">
+                <form id="updateIngredientForm{{ ingredient.ingredientID }}" method="POST"
+                    action="{{ url_for('update_ingredient', ingredient_id=ingredient.ingredientID) }}">
                     <div class="form-group">
                         <label for="ingredientName{{ ingredient.ingredientID }}">Ingredient Name</label>
-                        <input type="text" class="form-control" id="ingredientName{{ ingredient.ingredientID }}" name="ingredientName" value="{{ ingredient.ingredientName }}" required>
+                        <input type="text" class="form-control" id="ingredientName{{ ingredient.ingredientID }}"
+                            name="ingredientName" value="{{ ingredient.ingredientName }}" required>
                     </div>
-                    <input type="hidden" id="ingredientID{{ ingredient.ingredientID }}" name="ingredientID" value="{{ ingredient.ingredientID }}">
+                    <input type="hidden" id="ingredientID{{ ingredient.ingredientID }}" name="ingredientID"
+                        value="{{ ingredient.ingredientID }}">
                     <button type="submit" class="btn btn-primary">Update Ingredient</button>
                 </form>
             </div>
@@ -282,10 +331,20 @@
 
 
 
-{% endblock %}
-
-{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.4/js/jquery.dataTables.min.js"></script>
 <script>
+    $(document).ready(function () {
+        $('#addIngredientButton').click(function () {
+            $('#ingredientsContainer').append(
+                '<div class="ingredient-input mt-3"><input type="text" class="form-control" name="ingredients[]" placeholder="Ingredient" required><div class="row"><div class="col"><input type="number" class="form-control" name="quantities[]" placeholder="Qty" required></div><div class="col"><input type="text" class="form-control" name="units[]" placeholder="Measurement"required></div><div class="col-auto"><button type="button"class="btn btn-danger remove-ingredient-button">&times;</button></div></div></div>'
+            );
+        });
+
+        $('#ingredientsContainer').on('click', '.remove-ingredient-button', function () {
+            $(this).closest('.ingredient-input').remove();
+        });
+    });
     document.addEventListener("DOMContentLoaded", function () {
         // Search functionality
         const searchRecipeInput = document.getElementById('searchRecipes');
@@ -345,7 +404,7 @@
                 event.target.parentElement.remove();
             }
         });
-        
+
     });
 </script>
 
