@@ -23,6 +23,17 @@
         position: absolute;
         right: 20px;
     }
+
+    .step-input {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .step-input input {
+        flex: 1;
+        margin-right: 10px;
+    }
 </style>
 
 <div class="container-fluid text-center">
@@ -35,7 +46,6 @@
         </div>
     </div>
 </div>
-
 
 <div class="container-fluid text-center">
     <table id="recipeTable" class="table table-bordered table-hover">
@@ -79,8 +89,14 @@
                         <input type="text" class="form-control" id="description" name="description" required>
                     </div>
                     <div class="form-group">
-                        <label for="instruction">Steps</label>
-                        <textarea class="form-control" id="instruction" name="instruction" rows="5" required></textarea>
+                        <label for="steps">Steps</label>
+                        <div id="stepsContainer">
+                            <div class="step-input">
+                                <input type="text" class="form-control" name="steps[]" placeholder="Step 1" required>
+                                <button type="button" class="btn btn-danger remove-step-button">&times;</button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary" id="addStepButton">Add Step</button>
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-dark" type="submit" name="addRecipeBtn">Add</button>
@@ -95,20 +111,17 @@
 <script src="https://cdn.datatables.net/1.11.4/js/jquery.dataTables.min.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // Target the search input and table
+        // Search functionality
         const searchInput = document.getElementById('searchRecipe');
         const tableRows = document.querySelectorAll('#recipeTable tbody tr');
 
-        // Add event listener for input changes
         searchInput.addEventListener('input', function() {
             const searchTerm = searchInput.value.toLowerCase().trim();
 
-            // Iterate through each table row
             tableRows.forEach(row => {
                 const title = row.cells[0].textContent.toLowerCase();
                 const description = row.cells[1].textContent.toLowerCase();
 
-                // Show/hide row based on search term match
                 if (title.includes(searchTerm) || description.includes(searchTerm)) {
                     row.style.display = '';
                 } else {
@@ -116,9 +129,28 @@
                 }
             });
         });
+
+        // Add Step functionality
+        const stepsContainer = document.getElementById('stepsContainer');
+        const addStepButton = document.getElementById('addStepButton');
+
+        addStepButton.addEventListener('click', function() {
+            const stepCount = stepsContainer.children.length + 1;
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'step-input';
+            stepDiv.innerHTML = `
+                <input type="text" class="form-control" name="steps[]" placeholder="Step ${stepCount}" required>
+                <button type="button" class="btn btn-danger remove-step-button">&times;</button>
+            `;
+            stepsContainer.appendChild(stepDiv);
+        });
+
+        stepsContainer.addEventListener('click', function(event) {
+            if (event.target.classList.contains('remove-step-button')) {
+                event.target.parentElement.remove();
+            }
+        });
     });
 </script>
-
-
 
 {% endblock %}

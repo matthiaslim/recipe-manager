@@ -306,7 +306,6 @@ def get_recipe_details(recipe_id):
         cursor.close()
         db.close()
 
-
 # Create Recipe
 @app.route('/recipes/create', methods=['POST'])
 @login_required
@@ -317,7 +316,8 @@ def create_recipe():
     try:
         recipeName = request.form['recipeName']
         description = request.form['description']
-        instruction = request.form['instruction']
+        steps = request.form.getlist('steps[]')
+        instruction = "\n".join(steps)
         created_by = session.get('user_id')  # Assuming user is logged in
 
         cursor.execute(
@@ -325,16 +325,19 @@ def create_recipe():
             (recipeName, description, instruction, created_by)
         )
         db.commit()
+        print("Instructions:")
+        print(instruction)
 
         flash('Recipe created!', 'success')
         return redirect(url_for('get_recipes'))
 
     except mysql.connector.Error as err:
-        flash('Error creating recipe: {err}', 'danger')
+        flash(f'Error creating recipe: {err}', 'danger')
         return redirect(url_for('get_recipes'))
 
     finally:
         cursor.close()
+        db.close()
 
 
 # Update Recipe
