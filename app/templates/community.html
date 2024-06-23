@@ -7,17 +7,17 @@
 <body>
     <h1 class="text-center mb-5">Community</h1>
 
-    <section>
-        <!-- Search Bar -->
-        <div class="search-container">
-            <input type="text" id="searchInput" placeholder="Search for comments...">
-            <button id="searchButton" class="button">Search</button>
+    <div class="container-fluid text-center">
+        <div class="row">
+            <div class="col">
+                <div class="input-group mb-3" style="width: 60%; margin: 20px auto; padding-bottom:40px;">
+                    <input id="searchInput" class="form-control" type="text" placeholder="Search Comments..">
+                </div>
+            </div>
         </div>
-        <br><br><br>
-    </section>
+    </div>
     <section>
         <button id="addCommentButton" class="button">+ Add a Comment</button>
-        <br>
         <div class="list-group">
             {% for comment in comments %}
             <div class="list-group-item">
@@ -230,9 +230,9 @@
                 }
             }
         
-            // Search functionality
-            document.getElementById('searchButton').onclick = function() {
-                var searchQuery = document.getElementById('searchInput').value.toLowerCase();
+            // Search functionality - automatically filter comments as user types
+            document.getElementById('searchInput').addEventListener('input', function() {
+                var searchQuery = this.value.toLowerCase();
                 var comments = document.getElementsByClassName('list-group-item');
                 for (var i = 0; i < comments.length; i++) {
                     var commentText = comments[i].getElementsByClassName('comment-text')[0].innerText.toLowerCase();
@@ -242,7 +242,7 @@
                         comments[i].style.display = 'none';
                     }
                 }
-            };
+            });
         });
     </script>
 </body>
