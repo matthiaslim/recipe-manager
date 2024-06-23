@@ -141,4 +141,15 @@ BEGIN
     END IF;
 END //
 
+CREATE TRIGGER prevent_update_average_rating
+BEFORE UPDATE ON Recipe
+FOR EACH ROW
+BEGIN
+    IF NEW.averageRating <> OLD.averageRating THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Update to averageRating is not allowed';
+    END IF;
+END//
+
 DELIMITER ;
+
+REVOKE UPDATE (averageRating) ON Recipe FROM jefftanzw@localhost;
