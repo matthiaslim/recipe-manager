@@ -68,15 +68,7 @@
                 <td>{{ recipe.username }}</td>
                 <td>
                     <a href="{{ url_for('get_recipe_details', recipe_id=recipe.recipeID) }}"
-                        class="btn btn-primary btn-sm"><i class="fa fa-eye"></i></a>
-                    {% if recipe.created_by == session.get('user_id') %}
-                    <button type="button" class="btn btn-warning btn-sm" data-toggle="modal"
-                        data-target="#updateModal{{ recipe.recipeID }}"><i class="fa fa-pen"></i></button>
-                    <form action="{{ url_for('delete_recipe', recipe_id=recipe.recipeID) }}" method="POST"
-                        style="display:inline;">
-                        <button type="submit" class="btn btn-danger btn-sm"><i class="fa fa-trash"></i></button>
-                    </form>
-                    {% endif %}
+                        class="btn btn-primary btn-sm">More Details</a>
                 </td>
             </tr>
             {% endfor %}
@@ -120,8 +112,6 @@
         </tbody>
     </table>
 </div>
-
-
 
 <!-- Add Recipe Modal -->
 <div class="modal fade bd-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel"
@@ -187,89 +177,6 @@
         </div>
     </div>
 </div>
-
-{% for recipe in recipes %}
-<!-- Update Recipe Modal-->
-<div class="modal fade" id="updateModal{{ recipe.recipeID }}" tabindex="-1" role="dialog" data-backdrop="false"
-    aria-labelledby="updateModalLabel{{ recipe.recipeID }}" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="updateModalLabel{{ recipe.recipeID }}">Update Recipe</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="updateForm{{ recipe.recipeID }}" method="POST"
-                    action="{{ url_for('update_recipe', recipe_id=recipe.recipeID) }}">
-                    <div class="form-group">
-                        <label for="recipe_name{{ recipe.recipeID }}">Recipe Name</label>
-                        <input type="text" class="form-control" id="recipe_name{{ recipe.recipeID }}" name="recipe_name"
-                            value="{{ recipe.recipeName }}" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="description{{ recipe.recipeID }}">Description</label>
-                        <textarea class="form-control" id="description{{ recipe.recipeID }}" name="description" rows="5"
-                            required>{{ recipe.description }}</textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="instruction{{ recipe.recipeID }}">Instruction</label>
-                        <textarea class="form-control" id="instruction{{ recipe.recipeID }}" name="instruction"
-                            rows="10" required>{{ recipe.instruction }}</textarea>
-                    </div>
-
-                    <!-- Steps section -->
-                    <div class="form-group">
-                        <label>Steps</label>
-                        <div id="stepsContainer{{ recipe.recipeID }}">
-                            {% for step in recipe.steps %}
-                            <div class="step-input">
-                                <input type="text" class="form-control" name="steps[]" value="{{ step }}"
-                                    placeholder="Step {{ loop.index }}" required>
-                                {% if loop.index > 1 %}
-                                <button type="button" class="btn btn-danger remove-step-button">&times;</button>
-                                {% endif %}
-                            </div>
-                            {% endfor %}
-                        </div>
-                        <button type="button" class="btn btn-secondary" id="addStepButton{{ recipe.recipeID }}">Add
-                            Step</button>
-                    </div>
-                    <div class="form-group">
-                        <label for="ingredients">Ingredients</label>
-                        <div id="ingredientsContainer">
-                            <div class="ingredient-input">
-                                <input type="text" class="form-control" name="ingredients[]" placeholder="Ingredient"
-                                    required>
-                                <div class="row">
-                                    <div class="col">
-                                        <input type="number" class="form-control" name="quantities[]" placeholder="Qty"
-                                            required>
-                                    </div>
-                                    <div class="col">
-                                        <input type="text" class="form-control" name="units[]" placeholder="Measurement"
-                                            required>
-                                    </div>
-                                    <div class="col-auto">
-                                        <button type="button"
-                                            class="btn btn-danger remove-ingredient-button">&times;</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-secondary mt-3" id="addIngredientButton">Add Ingredient</button>
-                    </div>
-
-                    <button type="submit" form="updateForm{{ recipe.recipeID }}" class="btn btn-primary">Update
-                        Recipe</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-{% endfor %}
-
 
 <!-- Add Ingredient Modal -->
 <div class="modal fade bd-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel"
