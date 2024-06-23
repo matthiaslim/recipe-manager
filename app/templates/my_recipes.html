@@ -5,11 +5,6 @@
 {% block content %}
 <div class="container-fluid">
     <h2>My Recipes</h2>
-    {% if total_count==0 %}
-    <div class="container-fluid">
-        <a>No recipes found</a>
-    </div>
-    {% else %}
     <!-- Search Form -->
     <form class="form-inline mb-3" method="POST" action="{{ url_for('my_recipes', search_term=search_term) }}">
         <div class="form-row">
@@ -22,6 +17,11 @@
             </div>
         </div>
     </form>
+    {% if total_count==0 %}
+    <div class="container-fluid">
+        <a>No recipes found</a>
+    </div>
+    {% else %}
     <table class="table table-bordered">
         <thead class="thead-dark">
         <tr>
@@ -31,7 +31,7 @@
             <th>Actions</th>
         </tr>
         </thead>
-        <tbody>
+        <tbody class="table-light">
         {% for recipe in recipes %}
         <tr>
             <td>{{ recipe.recipeName }}</td>

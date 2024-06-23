@@ -336,7 +336,7 @@ def get_recipe_details(recipe_id):
             ''', (recipe_id,))
         ratings = cursor.fetchall()
 
-        return render_template('moredetails.html', recipe=recipe, ingredients=ingredients, directions=directions,
+        return render_template('recipe_details.html', recipe=recipe, ingredients=ingredients, directions=directions,
                                ratings=ratings)
 
     except mysql.connector.Error as err:

@@ -1,0 +1,71 @@
+{% extends "shared/layout.html" %}
+
+{% block title %}{{ recipe.recipeName }}{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col">
+            <h1>{{ recipe.recipeName }}</h1>
+            <p class="lead">{{ recipe.description }}</p>
+            <p>
+                <span class="font-weight-bold">Average Rating:</span> {{ recipe.averageRating }} ({{ recipe.ratingCount
+                }} ratings)
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <h2 class="card-header">Ingredients</h2>
+                <div class="card-body">
+                    {% for ingredient in ingredients %}
+                    <a>{{ ingredient.quantity }} {{ ingredient.unit }} of {{
+                        ingredient.ingredientName }}
+                    </a><br>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <h2 class="card-header">Directions</h2>
+                <div class="card-body">
+                    {% for direction in directions %}
+                    <p>Step {{direction.instructionOrder}}. {{ direction.instruction }}</p>
+                    {% endfor %}
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    <p class="text-secondary mb-0">
+                        Created by {{ recipe.username }}<br>
+                        {{ recipe.created_at }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col">
+            <a href="{{ url_for('my_recipes') }}" class="btn btn-secondary">Back to My Recipes</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
