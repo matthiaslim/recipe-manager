@@ -151,5 +151,3 @@ BEGIN
 END//
 
 DELIMITER ;
-
-REVOKE UPDATE (averageRating) ON Recipe FROM jefftanzw@localhost;
