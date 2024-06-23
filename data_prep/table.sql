@@ -34,6 +34,13 @@ CREATE TABLE IF NOT EXISTS Recipe_Ingredient (
     FOREIGN KEY (recipeID) REFERENCES Recipe(recipeID),
     FOREIGN KEY (ingredientID) REFERENCES Ingredient(ingredientID)
 );
+CREATE TABLE IF NOT EXISTS Recipe_Direction (
+    recipeID int NOT NULL,
+    instructionOrder int NOT NULL,
+    instruction varchar(255) NOT NULL,
+    PRIMARY KEY (recipeID, instructionOrder),
+    FOREIGN KEY (recipeID) REFERENCES Recipe(recipeID)
+)
 CREATE TABLE IF NOT EXISTS Rating (
     ratingID int NOT NULL AUTO_INCREMENT,
     userID int NOT NULL,
