@@ -202,17 +202,15 @@ def profile():
             user = cursor.fetchone()
             if user:
                 # Fetch additional information such as recipes created, threads created, replies made
-                cursor.execute('SELECT COUNT(*) AS recipes_count FROM Recipe WHERE created_by = %s', (user_id,))
-                recipes_count = cursor.fetchone()['recipes_count']
+                cursor.execute('''
+                               SELECT (SELECT COUNT(*) FROM Recipe WHERE created_by = %s) AS recipes_count, 
+                               (SELECT COUNT(*) FROM Thread WHERE created_by = %s) AS threads_count, 
+                               (SELECT COUNT(*) FROM Reply WHERE created_by = %s) AS replies_count
+                               ''', (user_id, user_id, user_id))
+                counts = cursor.fetchone()
 
-                cursor.execute('SELECT COUNT(*) AS threads_count FROM Thread WHERE created_by = %s', (user_id,))
-                threads_count = cursor.fetchone()['threads_count']
-
-                cursor.execute('SELECT COUNT(*) AS replies_count FROM Reply WHERE created_by = %s', (user_id,))
-                replies_count = cursor.fetchone()['replies_count']
-
-                return render_template('profile.html', user=user, recipes_count=recipes_count,
-                                       threads_count=threads_count, replies_count=replies_count)
+                return render_template('profile.html', user=user, recipes_count=counts['recipes_count'],
+                                       threads_count=counts['threads_count'], replies_count=counts['replies_count'])
         except mysql.connector.Error as err:
             flash(f"Error: {err}", 'danger')
         finally:
