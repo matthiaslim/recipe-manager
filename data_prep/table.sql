@@ -13,7 +13,6 @@ CREATE TABLE IF NOT EXISTS Recipe
     recipeID      int          NOT NULL AUTO_INCREMENT,
     recipeName    varchar(255) NOT NULL,
     description   varchar(255),
-    instruction   text,
     averageRating float(2)  DEFAULT 0.0,
     ratingCount   int       DEFAULT 0,
     created_by    int,
