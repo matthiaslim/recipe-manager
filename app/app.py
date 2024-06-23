@@ -13,6 +13,7 @@ app.secret_key = os.urandom(24)  # secret key for session management
 # Dummy data for community comments
 comments = []
 
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -30,7 +31,8 @@ def get_threads_with_replies(search_query=None):
     try:
         if search_query:
             cursor.execute(
-                'SELECT t.threadID, t.threadName, u.userName, t.reply_count FROM temp_thread_with_replies t INNER JOIN User u ON t.thread_created_by = u.userID WHERE t.threadName LIKE %s', ('%' + search_query + '%',))
+                'SELECT t.threadID, t.threadName, u.userName, t.reply_count FROM temp_thread_with_replies t INNER JOIN User u ON t.thread_created_by = u.userID WHERE t.threadName LIKE %s',
+                ('%' + search_query + '%',))
         else:
             cursor.execute(
                 'SELECT t.threadID, t.threadName, u.userName, t.reply_count FROM temp_thread_with_replies t INNER JOIN User u ON t.thread_created_by = u.userID')
@@ -57,7 +59,6 @@ def get_threads_with_replies(search_query=None):
     finally:
         cursor.close()
         db.close()
-
 
 
 # comments = get_threads_with_replies() # get all the threads
@@ -121,7 +122,7 @@ def login():
             cursor.execute('SELECT * FROM User WHERE username = %s', (username,))
             user = cursor.fetchone()
 
-            if checkpw(entered_password, user['password'].encode()):
+            if user and checkpw(entered_password, user['password'].encode()):
                 session['username'] = user['username']
                 session['user_id'] = user['userID']
                 flash('Login Successful!', 'success')
@@ -254,7 +255,7 @@ def change_password():
             finally:
                 cursor.close()
                 db.close()
-                
+
         return render_template('change_password.html')
 
     return redirect(url_for('login'))
@@ -279,6 +280,7 @@ def get_recipes():
 
     finally:
         cursor.close()
+        db.close()
 
 
 # Get Recipe
@@ -289,20 +291,52 @@ def get_recipe_details(recipe_id):
     cursor = db.cursor(dictionary=True)
 
     try:
+        # Get recipe details
         cursor.execute('SELECT * FROM Recipe WHERE recipeID = %s', (recipe_id,))
         recipe = cursor.fetchone()
 
-        if recipe:
-            return render_template('moredetails.html', recipe=recipe)
-        else:
-            return flash('Recipe not found', 'danger')
+        if not recipe:
+            flash('Recipe not found', 'danger')
+            return redirect(url_for('recipes'))
+
+        # Get ingredients
+        cursor.execute('''
+                SELECT i.ingredientName, ri.quantity, ri.unit
+                FROM Recipe_Ingredient ri
+                JOIN Ingredient i ON ri.ingredientID = i.ingredientID
+                WHERE ri.recipeID = %s
+            ''', (recipe_id,))
+        ingredients = cursor.fetchall()
+
+        # Get directions
+        cursor.execute('''
+                SELECT instructionOrder, instruction
+                FROM Recipe_Direction
+                WHERE recipeID = %s
+                ORDER BY instructionOrder
+            ''', (recipe_id,))
+        directions = cursor.fetchall()
+
+        # Get ratings
+        cursor.execute('''
+                SELECT r.rating, r.comment, u.username, r.created_At
+                FROM Rating r
+                JOIN User u ON r.userID = u.userID
+                WHERE r.recipeID = %s
+            ''', (recipe_id,))
+        ratings = cursor.fetchall()
+
+        return render_template('moredetails.html', recipe=recipe, ingredients=ingredients, directions=directions,
+                               ratings=ratings)
 
     except mysql.connector.Error as err:
-        return flash(f"Database error: {err}", 'danger')
+        flash(f"Error: {err}", 'danger')
+        return redirect(url_for('recipes'))
 
     finally:
         cursor.close()
         db.close()
+
 
 # Create Recipe
 @app.route('/recipes/create', methods=['POST'])
@@ -312,26 +346,52 @@ def create_recipe():
     cursor = db.cursor()
 
     try:
-        recipeName = request.form['recipeName']
+        recipe_name = request.form['recipeName']
         description = request.form['description']
-        steps = request.form.getlist('steps[]')
-        instruction = "\n".join(steps)
-        created_by = session.get('user_id')  # Assuming user is logged in
+        instruction = request.form['instruction']
+        created_by = session.get('user_id')
 
+        # Insert recipe
         cursor.execute(
             'INSERT INTO Recipe (recipeName, description, instruction, created_by) VALUES (%s, %s, %s, %s)',
-            (recipeName, description, instruction, created_by)
+            (recipe_name, description, instruction, created_by)
         )
+        recipe_id = cursor.lastrowid
+
+        # Insert ingredients
+        ingredient_names = request.form.getlist('ingredient_name[]')
+        quantities = request.form.getlist('quantity[]')
+        units = request.form.getlist('unit[]')
+
+        for name, quantity, unit in zip(ingredient_names, quantities, units):
+            cursor.execute(
+                'INSERT INTO Ingredient (ingredientName) VALUES (%s) ON DUPLICATE KEY UPDATE ingredientID=LAST_INSERT_ID(ingredientID)',
+                (name,)
+            )
+            ingredient_id = cursor.lastrowid
+
+            cursor.execute(
+                'INSERT INTO Recipe_Ingredient (recipeID, ingredientID, quantity, unit) VALUES (%s, %s, %s, %s)',
+                (recipe_id, ingredient_id, quantity, unit)
+            )
+
+        # Insert directions
+        directions = request.form.getlist('direction[]')
+        for order, direction in enumerate(directions, start=1):
+            cursor.execute(
+                'INSERT INTO Recipe_Direction (recipeID, instructionOrder, instruction) VALUES (%s, %s, %s)',
+                (recipe_id, order, direction)
+            )
+
         db.commit()
-        print("Instructions:")
-        print(instruction)
 
         flash('Recipe created!', 'success')
-        return redirect(url_for('get_recipes'))
+        return redirect(url_for('recipes'))
 
     except mysql.connector.Error as err:
-        flash(f'Error creating recipe: {err}', 'danger')
-        return redirect(url_for('get_recipes'))
+        db.rollback()
+        flash(f"Error creating recipe: {err}", 'danger')
+        return redirect(url_for('recipes'))
 
     finally:
         cursor.close()
@@ -339,87 +399,117 @@ def create_recipe():
 
 
 # Update Recipe
-@app.route('/recipe/update/<int:recipe_id>', methods=['POST'])
+@app.route('/recipes/update/<int:recipe_id>', methods=['GET', 'POST'])
 @login_required
 def update_recipe(recipe_id):
     db = get_db()
-    cursor = db.cursor()
+    cursor = db.cursor(dictionary=True)
 
-    try:
-        recipe_name = request.form['recipe_name']
-        description = request.form['description']
-        instruction = request.form['instruction']
-        user_id = session.get('user_id')  # Assuming user is logged in
+    # Check if the user is the creator of the recipe
+    cursor.execute('SELECT created_by FROM Recipe WHERE recipeID = %s', (recipe_id,))
+    recipe = cursor.fetchone()
+    if not recipe or recipe['created_by'] != session['user_id']:
+        flash('You are not authorized to edit this recipe.', 'danger')
+        return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
-        # Fetch the creator of the recipe
-        cursor.execute('SELECT created_by FROM Recipe WHERE recipeID = %s', (recipe_id,))
-        recipe = cursor.fetchone()
+    if request.method == 'POST':
+        try:
+            recipe_name = request.form['recipeName']
+            description = request.form['description']
+            instruction = request.form['instruction']
+            ingredients = request.form.getlist('ingredients')
+            quantities = request.form.getlist('quantities')
+            units = request.form.getlist('units')
+            directions = request.form.getlist('directions')
 
-        if recipe is None:
-            flash('Recipe not found', 'danger')
-            return redirect(url_for('discover'))
+            # Update recipe details
+            cursor.execute(
+                'UPDATE Recipe SET recipeName=%s, description=%s, instruction=%s WHERE recipeID=%s',
+                (recipe_name, description, instruction, recipe_id)
+            )
 
-        creator_id = recipe['created_by']
+            # Delete old ingredients
+            cursor.execute('DELETE FROM Recipe_Ingredient WHERE recipeID = %s', (recipe_id,))
 
-        # Check if the current user is the creator of the recipe
-        if user_id != creator_id:
-            flash('You are not authorized to update this recipe', 'danger')
+            # Insert new ingredients
+            for i in range(len(ingredients)):
+                cursor.execute(
+                    'INSERT INTO Recipe_Ingredient (recipeID, ingredientID, quantity, unit) VALUES (%s, %s, %s, %s)',
+                    (recipe_id, ingredients[i], quantities[i], units[i])
+                )
+
+            # Delete old directions
+            cursor.execute('DELETE FROM Recipe_Direction WHERE recipeID = %s', (recipe_id,))
+
+            # Insert new directions
+            for i, direction in enumerate(directions):
+                cursor.execute(
+                    'INSERT INTO Recipe_Direction (recipeID, instructionOrder, instruction) VALUES (%s, %s, %s)',
+                    (recipe_id, i + 1, direction)
+                )
+
+            db.commit()
+            flash('Recipe updated successfully!', 'success')
             return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
-        cursor.execute(
-            'UPDATE Recipe SET recipeName=%s, description=%s, instruction=%s WHERE recipeID=%s',
-            (recipe_name, description, instruction, recipe_id)
-        )
-        db.commit()
+        except mysql.connector.Error as err:
+            flash(f"Error updating recipe: {err}", 'danger')
 
-        flash('Recipe updated successfully', 'success')
-        return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
+        finally:
+            cursor.close()
+            db.close()
 
-    except mysql.connector.Error as err:
-        flash(f"Error updating recipe: {err}", 'danger')
-        return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
+    # Fetch current recipe details for the form
+    cursor.execute('SELECT * FROM Recipe WHERE recipeID = %s', (recipe_id,))
+    recipe = cursor.fetchone()
 
-    finally:
-        cursor.close()
+    cursor.execute('''
+        SELECT i.ingredientID, i.ingredientName, ri.quantity, ri.unit
+        FROM Recipe_Ingredient ri
+        JOIN Ingredient i ON ri.ingredientID = i.ingredientID
+        WHERE ri.recipeID = %s
+    ''', (recipe_id,))
+    ingredients = cursor.fetchall()
+
+    cursor.execute('''
+        SELECT instructionOrder, instruction
+        FROM Recipe_Direction
+        WHERE recipeID = %s
+        ORDER BY instructionOrder
+    ''', (recipe_id,))
+    directions = cursor.fetchall()
+
+    return render_template('edit_recipe.html', recipe=recipe, ingredients=ingredients, directions=directions)
 
 
 # Delete Recipe
-@app.route('/recipe/delete/<int:recipe_id>', methods=["POST"])
+@app.route('/recipes/delete/<int:recipe_id>', methods=['POST'])
 @login_required
 def delete_recipe(recipe_id):
     db = get_db()
-    cursor = db.cursor()
+    cursor = db.cursor(dictionary=True)
 
     try:
-        user_id = session.get('user_id')  # Assuming user is logged in
-
-        # Fetch the creator of the recipe
+        # Check if the user is the creator of the recipe
         cursor.execute('SELECT created_by FROM Recipe WHERE recipeID = %s', (recipe_id,))
         recipe = cursor.fetchone()
-
-        if recipe is None:
-            flash('Recipe not found', 'danger')
+        if not recipe or recipe['created_by'] != session['user_id']:
+            flash('You are not authorized to delete this recipe.', 'danger')
             return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
-        creator_id = recipe['created_by']
-
-        # Check if the current user is the creator of the recipe
-        if user_id != creator_id:
-            flash('You are not authorized to delete this recipe', 'danger')
-            return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
-
+        # Delete the recipe
         cursor.execute('DELETE FROM Recipe WHERE recipeID = %s', (recipe_id,))
         db.commit()
 
-        flash('Recipe deleted successfully', 'success')
-        return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
+        flash('Recipe deleted successfully!', 'success')
+        return redirect(url_for('index'))
 
     except mysql.connector.Error as err:
         flash(f"Error deleting recipe: {err}", 'danger')
-        return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
     finally:
         cursor.close()
+        db.close()
 
 
 # Community
