@@ -520,12 +520,28 @@ def my_recipes():
     cursor = db.cursor(dictionary=True)
     user_id = session.get('user_id')
 
-    # Get the page number from the request
-    page = request.args.get('page', 1, type=int)
-    per_page = 5  # Number of recipes per page
-    offset = (page - 1) * per_page
-
     try:
+        if request.method == 'POST':
+            search_term = request.form.get('search_term', '')
+        else:
+            search_term = request.args.get('search_term', '')
+
+        # Get the page number from the request
+        page = request.args.get('page', 1, type=int)
+        per_page = 10  # Number of recipes per page
+        offset = (page - 1) * per_page
+
+        # SQL query to fetch recipes with optional search filter
+        if search_term:
+            cursor.execute(
+                'SELECT * FROM Recipe WHERE created_by = %s AND (recipeName LIKE %s OR description LIKE %s) LIMIT %s OFFSET %s',
+                (session['user_id'], f'%{search_term}%', f'%{search_term}%', per_page, offset))
+        else:
+            cursor.execute('SELECT * FROM Recipe WHERE created_by = %s LIMIT %s OFFSET %s',
+                           (session['user_id'], per_page, offset))
+
+        recipes = cursor.fetchall()
+
         # Get the total count of recipes created by the user
         cursor.execute('SELECT COUNT(*) as count FROM Recipe WHERE created_by = %s', (user_id,))
         total_count = cursor.fetchone()['count']

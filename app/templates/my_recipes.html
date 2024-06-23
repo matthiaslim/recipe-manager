@@ -5,6 +5,21 @@
 {% block content %}
 <div class="container-fluid">
     <h2>My Recipes</h2>
+
+    <!-- Search Form -->
+    <form class="form-inline mb-3" method="POST" action="{{ url_for('my_recipes') }}">
+        <div class="form-row">
+            <div class="col-auto">
+                <input type="text" class="form-control" name="search_term" style="min-width: 300px; width: auto;"
+                       placeholder="Search by name or description"
+                       aria-label="search" value="{{ search_term }}">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-outline-success ml-1">Search</button>
+            </div>
+        </div>
+    </form>
+
     <table class="table table-bordered">
         <thead class="thead-dark">
         <tr>
