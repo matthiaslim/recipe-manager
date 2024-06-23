@@ -274,7 +274,8 @@ def get_recipes():
         cursor = db.cursor(dictionary=True)
 
         # Fetch recipes with creator's username
-        cursor.execute('SELECT Recipe.*, User.username AS username FROM Recipe JOIN User ON Recipe.created_by = User.userID')
+        cursor.execute(
+            'SELECT Recipe.*, User.username AS username FROM Recipe JOIN User ON Recipe.created_by = User.userID')
         recipes = cursor.fetchall()
 
         # Fetch all ingredients
@@ -288,6 +289,7 @@ def get_recipes():
 
     finally:
         cursor.close()
+
 
 # Get Recipe
 @app.route('/recipes/<int:recipe_id>')
@@ -338,6 +340,58 @@ def get_recipe_details(recipe_id):
     except mysql.connector.Error as err:
         flash(f"Error: {err}", 'danger')
         return redirect(url_for('recipes'))
+
+    finally:
+        cursor.close()
+        db.close()
+
+
+# My Recipes Page
+@app.route('/my_recipes', methods=['GET', 'POST'])
+@login_required
+def my_recipes():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    user_id = session.get('user_id')
+
+    try:
+        if request.method == 'POST':
+            search_term = request.form.get('search_term', '')
+            page = request.args.get('page', 1, type=int)
+        else:
+            search_term = request.args.get('search_term', '')
+            page = request.args.get('page', 1, type=int)
+
+        per_page = 10  # Number of recipes per page
+        offset = (page - 1) * per_page
+
+        # SQL query to fetch recipes with optional search filter
+        query = 'SELECT * FROM Recipe WHERE created_by = %s'
+        params = [user_id]
+
+        if search_term:
+            query += ' AND (recipeName LIKE %s OR description LIKE %s)'
+            params.extend([f'%{search_term}%', f'%{search_term}%'])
+
+        query += ' LIMIT %s OFFSET %s'
+        params.extend([per_page, offset])
+
+        cursor.execute(query, params)
+        recipes = cursor.fetchall()
+
+        # Get the total count of recipes created by the user
+        cursor.execute('SELECT COUNT(*) as count FROM Recipe WHERE created_by = %s', (user_id,))
+        total_count = cursor.fetchone()['count']
+
+        # Calculate the total number of pages
+        total_pages = (total_count + per_page - 1) // per_page
+
+        return render_template('my_recipes.html', recipes=recipes, page=page, total_count=total_count,
+                               total_pages=total_pages, search_term=search_term)
+
+    except (mysql.connector.Error, KeyError, TypeError) as err:
+        flash(f"Database error: {err}", 'danger')
+        return redirect(url_for('index'))
 
     finally:
         cursor.close()
@@ -404,67 +458,10 @@ def create_recipe():
         db.close()
 
 
-# My Recipes Page
-@app.route('/my_recipes')
+# Edit Recipe
+@app.route('/my_recipes/edit/<int:recipe_id>', methods=['GET', 'POST'])
 @login_required
-def my_recipes():
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    user_id = session.get('user_id')
-    try:
-
-        # Handle AJAX request from DataTables
-        draw = int(request.args.get('draw', 1))
-        start = int(request.args.get('start', 0))
-        length = int(request.args.get('length', 10))
-        search_value = request.args.get('search[value]', '').strip()
-
-        # Construct base query
-        query = 'SELECT * FROM Recipe WHERE created_by = %s'
-        count_query = 'SELECT COUNT(*) AS count FROM Recipe WHERE created_by = %s'
-        params = (user_id,)
-
-        if search_value:
-            query += ' AND (recipeName LIKE %s OR description LIKE %s)'
-            params += (f'%{search_value}%', f'%{search_value}%',)
-            count_query += ' AND (recipeName LIKE %s OR description LIKE %s)'
-
-        # Execute query to fetch filtered records
-        query += ' LIMIT %s OFFSET %s'
-        params += (length, start,)
-        cursor.execute(query, params)
-        recipes = cursor.fetchall()
-
-        # Fetch total count for pagination
-        cursor.execute(count_query, (user_id,) if not search_value else params[:-2])
-        total_count = cursor.fetchone()['count']
-
-        # Prepare JSON response for DataTables
-        response = {
-            'draw': draw,
-            'recordsTotal': total_count,
-            'recordsFiltered': total_count if not search_value else len(recipes),
-            'data': recipes
-        }
-
-        if request.method == 'POST' and request.is_json:
-            return jsonify(response)
-
-        return render_template('my_recipes.html', recipes=recipes, total_count=total_count, search_term=search_value)
-
-    except mysql.connector.Error as err:
-        flash(f"Database error: {err}", 'danger')
-        return jsonify({'error': 'Database error'}), 500
-
-    finally:
-        cursor.close()
-        db.close()
-
-
-# Update Recipe
-@app.route('/my_recipes/update/<int:recipe_id>', methods=['GET', 'POST'])
-@login_required
-def update_recipe(recipe_id):
+def edit_recipe(recipe_id):
     db = get_db()
     cursor = db.cursor(dictionary=True)
 
@@ -522,27 +519,36 @@ def update_recipe(recipe_id):
             cursor.close()
             db.close()
 
-    # Fetch current recipe details for the form
-    cursor.execute('SELECT * FROM Recipe WHERE recipeID = %s', (recipe_id,))
-    recipe = cursor.fetchone()
+    else:
+        try:
+            # Fetch current recipe details for the form
+            cursor.execute('SELECT * FROM Recipe WHERE recipeID = %s', (recipe_id,))
+            recipe = cursor.fetchone()
 
-    cursor.execute('''
-        SELECT i.ingredientID, i.ingredientName, ri.quantity, ri.unit
-        FROM Recipe_Ingredient ri
-        JOIN Ingredient i ON ri.ingredientID = i.ingredientID
-        WHERE ri.recipeID = %s
-    ''', (recipe_id,))
-    ingredients = cursor.fetchall()
+            cursor.execute('''
+                SELECT i.ingredientID, i.ingredientName, ri.quantity, ri.unit
+                FROM Recipe_Ingredient ri
+                JOIN Ingredient i ON ri.ingredientID = i.ingredientID
+                WHERE ri.recipeID = %s
+            ''', (recipe_id,))
+            ingredients = cursor.fetchall()
 
-    cursor.execute('''
-        SELECT instructionOrder, instruction
-        FROM Recipe_Direction
-        WHERE recipeID = %s
-        ORDER BY instructionOrder
-    ''', (recipe_id,))
-    directions = cursor.fetchall()
+            cursor.execute('''
+                SELECT instructionOrder, instruction
+                FROM Recipe_Direction
+                WHERE recipeID = %s
+                ORDER BY instructionOrder
+            ''', (recipe_id,))
+            directions = cursor.fetchall()
+        except mysql.connector.Error as err:
+            flash(f"Database error: {err}", 'danger')
+            return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
-    return render_template('edit_recipe.html', recipe=recipe, ingredients=ingredients, directions=directions)
+        finally:
+            cursor.close()
+            db.close()
+
+    return render_template('moredetails.html', recipe=recipe, ingredients=ingredients, directions=directions)
 
 
 # Delete Recipe
@@ -556,7 +562,12 @@ def delete_recipe(recipe_id):
         # Check if the user is the creator of the recipe
         cursor.execute('SELECT created_by FROM Recipe WHERE recipeID = %s', (recipe_id,))
         recipe = cursor.fetchone()
-        if not recipe or recipe['created_by'] != session['user_id']:
+
+        if not recipe:
+            flash('Recipe not found.', 'danger')
+            return redirect(url_for('my_recipes'))
+
+        if 'user_id' not in session or recipe['created_by'] != session['user_id']:
             flash('You are not authorized to delete this recipe.', 'danger')
             return redirect(url_for('my_recipes'))
 
@@ -567,14 +578,17 @@ def delete_recipe(recipe_id):
         flash('Recipe deleted successfully!', 'success')
         return redirect(url_for('my_recipes'))
 
-    except mysql.connector.Error as err:
+    except (mysql.connector.Error, KeyError, TypeError) as err:
         flash(f"Error deleting recipe: {err}", 'danger')
 
     finally:
         cursor.close()
         db.close()
 
-#Ingredients
+    return redirect(url_for('my_recipes'))
+
+
+# Ingredients
 # Add Ingredient
 @app.route('/ingredient/create', methods=['POST'])
 @login_required
@@ -598,6 +612,7 @@ def add_ingredient():
             cursor.close()
             return redirect(url_for('get_recipes'))
 
+
 # Update Ingredient
 @app.route('/ingredient/update/<int:ingredient_id>', methods=['POST'])
 @login_required
@@ -616,7 +631,8 @@ def update_ingredient(ingredient_id):
             return redirect(url_for('get_recipes'))
 
         # Perform update in the database
-        cursor.execute('UPDATE Ingredient SET ingredientName=%s WHERE ingredientID=%s', (ingredient_name, ingredient_id))
+        cursor.execute('UPDATE Ingredient SET ingredientName=%s WHERE ingredientID=%s',
+                       (ingredient_name, ingredient_id))
         db.commit()
 
         flash('Ingredient updated successfully', 'success')
@@ -628,6 +644,7 @@ def update_ingredient(ingredient_id):
 
     finally:
         cursor.close()
+
 
 # Community
 @app.route('/community')

@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS Recipe_Ingredient
     quantity     int          NOT NULL,
     unit         varchar(255) NOT NULL,
     PRIMARY KEY (recipeID, ingredientID),
-    FOREIGN KEY (recipeID) REFERENCES Recipe (recipeID),
+    FOREIGN KEY (recipeID) REFERENCES Recipe (recipeID) ON DELETE CASCADE, -- Delete related ingredients when the recipe is deleted
     FOREIGN KEY (ingredientID) REFERENCES Ingredient (ingredientID)
 );
 
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS Recipe_Direction
     instructionOrder int          NOT NULL,
     instruction      varchar(255) NOT NULL,
     PRIMARY KEY (recipeID, instructionOrder),
-    FOREIGN KEY (recipeID) REFERENCES Recipe (recipeID)
+    FOREIGN KEY (recipeID) REFERENCES Recipe (recipeID) ON DELETE CASCADE -- Delete related directions when the recipe is deleted
 );
 
 CREATE TABLE IF NOT EXISTS Rating
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS Rating
     updated_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (ratingID),
     FOREIGN KEY (userID) REFERENCES User (userID),
-    FOREIGN KEY (recipeID) REFERENCES Recipe (recipeID),
+    FOREIGN KEY (recipeID) REFERENCES Recipe (recipeID) ON DELETE CASCADE, -- Delete ratings when associated recipe is deleted
     CHECK (rating >= 1 AND rating <= 5),
     CONSTRAINT unique_user_recipe_rating UNIQUE (userID, recipeID)
 );
@@ -142,8 +142,9 @@ BEGIN
 END //
 
 CREATE TRIGGER prevent_update_average_rating
-BEFORE UPDATE ON Recipe
-FOR EACH ROW
+    BEFORE UPDATE
+    ON Recipe
+    FOR EACH ROW
 BEGIN
     IF NEW.averageRating <> OLD.averageRating THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Update to averageRating is not allowed';
