@@ -512,6 +512,46 @@ def delete_recipe(recipe_id):
         db.close()
 
 
+# My Recipes Page
+@app.route('/my_recipes')
+@login_required
+def my_recipes():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    user_id = session.get('user_id')
+
+    # Get the page number from the request
+    page = request.args.get('page', 1, type=int)
+    per_page = 5  # Number of recipes per page
+    offset = (page - 1) * per_page
+
+    try:
+        # Get the total count of recipes created by the user
+        cursor.execute('SELECT COUNT(*) as count FROM Recipe WHERE created_by = %s', (user_id,))
+        total_count = cursor.fetchone()['count']
+
+        # Fetch recipes created by the user with pagination
+        cursor.execute('''
+            SELECT * FROM Recipe 
+            WHERE created_by = %s 
+            LIMIT %s OFFSET %s
+        ''', (user_id, per_page, offset))
+        recipes = cursor.fetchall()
+
+        # Calculate the total number of pages
+        total_pages = (total_count + per_page - 1) // per_page
+
+        return render_template('my_recipes.html', recipes=recipes, page=page, total_pages=total_pages)
+
+    except mysql.connector.Error as err:
+        flash(f"Database error: {err}", 'danger')
+        return redirect(url_for('index'))
+
+    finally:
+        cursor.close()
+        db.close()
+
+
 # Community
 @app.route('/community')
 def community():
