@@ -300,7 +300,7 @@ def get_recipe_details(recipe_id):
 
     try:
         # Get recipe details
-        cursor.execute('SELECT * FROM Recipe WHERE recipeID = %s', (recipe_id,))
+        cursor.execute('SELECT r.*, u.username FROM Recipe r JOIN User u ON r.created_by = u.userID WHERE r.recipeID = %s', (recipe_id,))
         recipe = cursor.fetchone()
 
         if not recipe:
