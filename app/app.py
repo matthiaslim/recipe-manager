@@ -300,7 +300,9 @@ def get_recipe_details(recipe_id):
 
     try:
         # Get recipe details
-        cursor.execute('SELECT r.*, u.username FROM Recipe r JOIN User u ON r.created_by = u.userID WHERE r.recipeID = %s', (recipe_id,))
+        cursor.execute(
+            'SELECT r.*, u.username FROM Recipe r JOIN User u ON r.created_by = u.userID WHERE r.recipeID = %s',
+            (recipe_id,))
         recipe = cursor.fetchone()
 
         if not recipe:
@@ -408,13 +410,12 @@ def create_recipe():
     try:
         recipe_name = request.form['recipeName']
         description = request.form['description']
-        instruction = request.form['instruction']
         created_by = session.get('user_id')
 
         # Insert recipe
         cursor.execute(
-            'INSERT INTO Recipe (recipeName, description, instruction, created_by) VALUES (%s, %s, %s, %s)',
-            (recipe_name, description, instruction, created_by)
+            'INSERT INTO Recipe (recipeName, description, created_by) VALUES (%s, %s, %s, %s)',
+            (recipe_name, description, created_by)
         )
         recipe_id = cursor.lastrowid
 
@@ -458,7 +459,6 @@ def create_recipe():
         db.close()
 
 
-# Edit Recipe
 @app.route('/my_recipes/edit/<int:recipe_id>', methods=['GET', 'POST'])
 @login_required
 def edit_recipe(recipe_id):
@@ -470,68 +470,76 @@ def edit_recipe(recipe_id):
     recipe = cursor.fetchone()
     if not recipe or recipe['created_by'] != session['user_id']:
         flash('You are not authorized to edit this recipe.', 'danger')
-        return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
+        return redirect(url_for('my_recipes'))
 
-    if request.method == 'POST':
-        try:
-            recipe_name = request.form['recipeName']
+    try:
+        if request.method == 'POST':
+            # Handle form submission to update recipe
+            recipe_name = request.form['recipe_name']
             description = request.form['description']
-            instruction = request.form['instruction']
-            ingredients = request.form.getlist('ingredients')
-            quantities = request.form.getlist('quantities')
-            units = request.form.getlist('units')
-            directions = request.form.getlist('directions')
+            directions = request.form.getlist('directions[]')
+            ingredients = request.form.getlist('ingredients[]')
+            quantities = request.form.getlist('quantities[]')
+            units = request.form.getlist('units[]')
 
-            # Update recipe details
+            # Update recipe details in Recipe table
             cursor.execute(
-                'UPDATE Recipe SET recipeName=%s, description=%s, instruction=%s WHERE recipeID=%s',
-                (recipe_name, description, instruction, recipe_id)
+                'UPDATE Recipe SET recipeName=%s, description=%s WHERE recipeID=%s',
+                (recipe_name, description, recipe_id)
             )
 
-            # Delete old ingredients
-            cursor.execute('DELETE FROM Recipe_Ingredient WHERE recipeID = %s', (recipe_id,))
-
-            # Insert new ingredients
-            for i in range(len(ingredients)):
-                cursor.execute(
-                    'INSERT INTO Recipe_Ingredient (recipeID, ingredientID, quantity, unit) VALUES (%s, %s, %s, %s)',
-                    (recipe_id, ingredients[i], quantities[i], units[i])
-                )
-
-            # Delete old directions
+            # Delete old directions for the recipe
             cursor.execute('DELETE FROM Recipe_Direction WHERE recipeID = %s', (recipe_id,))
 
-            # Insert new directions
+            # Insert new directions into Recipe_Direction table
             for i, direction in enumerate(directions):
                 cursor.execute(
                     'INSERT INTO Recipe_Direction (recipeID, instructionOrder, instruction) VALUES (%s, %s, %s)',
                     (recipe_id, i + 1, direction)
                 )
 
+            # Delete old ingredients for the recipe
+            cursor.execute('DELETE FROM Recipe_Ingredient WHERE recipeID = %s', (recipe_id,))
+
+            # Insert or update Recipe_Ingredient entries
+            for i in range(len(ingredients)):
+                ingredient_name = ingredients[i]
+                quantity = quantities[i]
+                unit = units[i]
+
+                # Check if ingredientName exists in Ingredient table
+                cursor.execute(
+                    'SELECT ingredientID FROM Ingredient WHERE ingredientName = %s',
+                    (ingredient_name,)
+                )
+                existing_ingredient = cursor.fetchone()
+
+                if existing_ingredient:
+                    # If ingredient exists, use its ingredientID
+                    ingredient_id = existing_ingredient['ingredientID']
+                else:
+                    # If ingredient does not exist, insert it into Ingredient table
+                    cursor.execute(
+                        'INSERT INTO Ingredient (ingredientName) VALUES (%s)',
+                        (ingredient_name,)
+                    )
+                    db.commit()
+                    ingredient_id = cursor.lastrowid  # Get the last inserted ID
+
+                # Insert into Recipe_Ingredient table
+                cursor.execute(
+                    'INSERT INTO Recipe_Ingredient (recipeID, ingredientID, quantity, unit) VALUES (%s, %s, %s, %s)',
+                    (recipe_id, ingredient_id, quantity, unit)
+                )
+
             db.commit()
             flash('Recipe updated successfully!', 'success')
-            return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
+            return redirect(url_for('my_recipes'))
 
-        except mysql.connector.Error as err:
-            flash(f"Error updating recipe: {err}", 'danger')
-
-        finally:
-            cursor.close()
-            db.close()
-
-    else:
-        try:
+        else:
             # Fetch current recipe details for the form
             cursor.execute('SELECT * FROM Recipe WHERE recipeID = %s', (recipe_id,))
             recipe = cursor.fetchone()
-
-            cursor.execute('''
-                SELECT i.ingredientID, i.ingredientName, ri.quantity, ri.unit
-                FROM Recipe_Ingredient ri
-                JOIN Ingredient i ON ri.ingredientID = i.ingredientID
-                WHERE ri.recipeID = %s
-            ''', (recipe_id,))
-            ingredients = cursor.fetchall()
 
             cursor.execute('''
                 SELECT instructionOrder, instruction
@@ -540,15 +548,24 @@ def edit_recipe(recipe_id):
                 ORDER BY instructionOrder
             ''', (recipe_id,))
             directions = cursor.fetchall()
-        except mysql.connector.Error as err:
-            flash(f"Database error: {err}", 'danger')
-            return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
-        finally:
-            cursor.close()
-            db.close()
+            cursor.execute('''
+                SELECT ri.quantity, ri.unit, i.ingredientName
+                FROM Recipe_Ingredient ri
+                INNER JOIN Ingredient i ON ri.ingredientID = i.ingredientID
+                WHERE ri.recipeID = %s
+            ''', (recipe_id,))
+            ingredients = cursor.fetchall()
 
-    return render_template('moredetails.html', recipe=recipe, ingredients=ingredients, directions=directions)
+            return render_template('edit_recipe.html', recipe=recipe, directions=directions, ingredients=ingredients)
+
+    except mysql.connector.Error as err:
+        flash(f"Database error: {err}", 'danger')
+        return redirect(url_for('my_recipes'))
+
+    finally:
+        cursor.close()
+        db.close()
 
 
 # Delete Recipe

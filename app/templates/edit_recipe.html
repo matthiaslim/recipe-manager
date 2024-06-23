@@ -1,0 +1,199 @@
+{% extends "shared/layout.html" %}
+
+{% block title %}Edit Recipe{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid" style="width: 60%">
+    <h1>Edit Recipe</h1>
+    <form method="POST" action="{{ url_for('edit_recipe', recipe_id=recipe.recipeID) }}">
+        <div class="form-group">
+            <label for="recipeName">Recipe Name</label>
+            <input type="text" class="form-control" id="recipeName" name="recipe_name" value="{{ recipe.recipeName }}"
+                   required>
+        </div>
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea class="form-control" id="description" name="description">{{ recipe.description }}</textarea>
+        </div>
+        <div id="directionsContainer">
+            <label for="directions">Steps</label>
+            {% for direction in directions %}
+            <div class="form-group direction">
+                <div class="input-group">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text step-number">{{ loop.index }}</span>
+                    </div>
+                    <input type="text" class="form-control step-input" name="directions[]" value="{{ direction.instruction }}"
+                           required>
+                    <div class="input-group-append">
+                        <button type="button" class="btn btn-danger btn-sm removeDirection"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <button type="button" class="btn btn-secondary mb-3" id="addDirection">Add Step</button>
+        <div id="ingredientsContainer">
+            {% for ingredient in ingredients %}
+            <div class="form-row mb-3 ingredient">
+                <div class="form-group col-md-6">
+                    <label>Ingredient</label>
+                    <input type="text" class="form-control" name="ingredients[]" value="{{ ingredient.ingredientName }}"
+                           required>
+                </div>
+                <div class="form-group col-md-1">
+                    <label>Quantity</label>
+                    <input type="number" class="form-control" name="quantities[]" value="{{ ingredient.quantity }}"
+                           required>
+                </div>
+                <div class="form-group col-md-4">
+                    <label>Unit</label>
+                    <input type="text" class="form-control" name="units[]" value="{{ ingredient.unit }}" required>
+                </div>
+                <div class="form-group col-md-1">
+                    <label style="visibility: hidden">Remove</label>
+                    <button type="button" class="btn btn-danger btn-sm removeIngredient"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <button type="button" class="btn btn-secondary mb-3" id="addIngredient">Add Ingredient</button>
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary">Save changes</button>
+            <a href="{{ url_for('my_recipes') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // JavaScript to add new direction input fields
+    document.getElementById('addDirection').addEventListener('click', function () {
+        let container = document.getElementById('directionsContainer');
+        let div = document.createElement('div');
+        div.className = 'form-group direction';
+        let inputGroup = document.createElement('div');
+        inputGroup.className = 'input-group';
+        let stepNumber = container.querySelectorAll('.step-number').length + 1; // Get next step number
+        let prependDiv = document.createElement('div');
+        prependDiv.className = 'input-group-prepend';
+        let span = document.createElement('span');
+        span.className = 'input-group-text step-number';
+        span.textContent = stepNumber;
+        prependDiv.appendChild(span);
+        inputGroup.appendChild(prependDiv);
+        let input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'form-control step-input';
+        input.name = 'directions[]';
+        input.placeholder = 'Enter step';
+        inputGroup.appendChild(input);
+        let appendDiv = document.createElement('div');
+        appendDiv.className = 'input-group-append';
+        let removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'btn btn-danger btn-sm removeDirection';
+        removeButton.innerHTML = '<i class="fas fa-trash"></i>';
+        removeButton.addEventListener('click', function () {
+            div.remove();
+            updateStepNumbers(); // Update step numbers after removal
+        });
+        appendDiv.appendChild(removeButton);
+        inputGroup.appendChild(appendDiv);
+        div.appendChild(inputGroup);
+        container.appendChild(div);
+    });
+
+    // Function to update step numbers
+    function updateStepNumbers() {
+        let stepNumbers = document.querySelectorAll('.step-number');
+        stepNumbers.forEach((step, index) => {
+            step.textContent = index + 1;
+        });
+    }
+
+    // JavaScript to add new ingredient input fields
+    document.getElementById('addIngredient').addEventListener('click', function () {
+        let container = document.getElementById('ingredientsContainer');
+        let div = document.createElement('div');
+        div.className = 'form-row mb-3 ingredient';
+        let ingredientNameDiv = document.createElement('div');
+        ingredientNameDiv.className = 'form-group col-md-6';
+        let ingredientNameLabel = document.createElement('label');
+        ingredientNameLabel.setAttribute('for', 'ingredientName');
+        ingredientNameLabel.textContent = 'Ingredient';
+        let ingredientNameInput = document.createElement('input');
+        ingredientNameInput.type = 'text';
+        ingredientNameInput.className = 'form-control';
+        ingredientNameInput.name = 'ingredients[]';
+        ingredientNameInput.setAttribute('placeholder', 'Enter ingredient');
+        ingredientNameDiv.appendChild(ingredientNameLabel);
+        ingredientNameDiv.appendChild(ingredientNameInput);
+
+        let ingredientQtyDiv = document.createElement('div');
+        ingredientQtyDiv.className = 'form-group col-md-1';
+        let ingredientQtyLabel = document.createElement('label');
+        ingredientQtyLabel.setAttribute('for', 'ingredientQty');
+        ingredientQtyLabel.textContent = 'Quantity';
+        let ingredientQtyInput = document.createElement('input');
+        ingredientQtyInput.type = 'number';
+        ingredientQtyInput.className = 'form-control';
+        ingredientQtyInput.name = 'quantities[]';
+        ingredientQtyDiv.appendChild(ingredientQtyLabel);
+        ingredientQtyDiv.appendChild(ingredientQtyInput);
+
+        let ingredientUnitDiv = document.createElement('div');
+        ingredientUnitDiv.className = 'form-group col-md-4';
+        let ingredientUnitLabel = document.createElement('label');
+        ingredientUnitLabel.setAttribute('for', 'ingredientUnit');
+        ingredientUnitLabel.textContent = 'Unit';
+        let ingredientUnitInput = document.createElement('input');
+        ingredientUnitInput.type = 'text';
+        ingredientUnitInput.className = 'form-control';
+        ingredientUnitInput.name = 'units[]';
+        ingredientUnitInput.setAttribute('placeholder', 'Enter unit');
+        ingredientUnitDiv.appendChild(ingredientUnitLabel);
+        ingredientUnitDiv.appendChild(ingredientUnitInput);
+
+        // Remove Button
+        let removeIngredientDiv = document.createElement('div');
+        removeIngredientDiv.className = 'form-group col-md-1';
+        let removeLabel = document.createElement('label');
+        removeLabel.textContent = 'Remove';
+        removeLabel.style.visibility = 'hidden'; // Hide the label text visually
+        let removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'btn btn-danger btn-sm removeIngredient';
+        removeButton.innerHTML = '<i class="fas fa-trash"></i>';
+        removeButton.addEventListener('click', function () {
+            div.remove();
+        });
+        removeIngredientDiv.appendChild(removeLabel);
+        removeIngredientDiv.appendChild(removeButton);
+
+        div.appendChild(ingredientNameDiv);
+        div.appendChild(ingredientQtyDiv);
+        div.appendChild(ingredientUnitDiv);
+        div.appendChild(removeIngredientDiv);
+
+        container.appendChild(div);
+    });
+
+    // JavaScript to remove direction input fields
+    $(document).on('click', '.removeDirection', function () {
+        $(this).closest('.direction').remove();
+        updateStepNumbers(); // Update step numbers after removal
+    });
+
+    // JavaScript to remove ingredient input fields
+    $(document).on('click', '.removeIngredient', function () {
+        $(this).closest('.ingredient').remove();
+    });
+
+    // Initial call to update step numbers in case of pre-existing directions
+    updateStepNumbers();
+</script>
+{% endblock %}

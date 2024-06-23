@@ -15,7 +15,7 @@
         <div class="form-row">
             <div class="col-auto">
                 <input type="text" class="form-control" name="search_term" style="min-width: 300px; width: auto;"
-                    placeholder="Search by name or description" aria-label="search" value="{{ search_term }}">
+                       placeholder="Search by name or description" aria-label="search" value="{{ search_term }}">
             </div>
             <div class="col-auto">
                 <button type="submit" class="btn btn-outline-success ml-1">Search</button>
@@ -24,151 +24,62 @@
     </form>
     <table class="table table-bordered">
         <thead class="thead-dark">
-            <tr>
-                <th>Name</th>
-                <th>Description</th>
-                <th>Rating</th>
-                <th>Actions</th>
-            </tr>
+        <tr>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Rating</th>
+            <th>Actions</th>
+        </tr>
         </thead>
         <tbody>
-            {% for recipe in recipes %}
-            <tr>
-                <td>{{ recipe.recipeName }}</td>
-                <td>{{ recipe.description }}</td>
-                <td>{% if recipe.averageRating %}
-                    {{ recipe.averageRating }} ({{ recipe.ratingCount }})
-                    {% else %}
-                    Not rated
-                    {% endif %}
-                </td>
-                <td>
-                    <a href="{{ url_for('get_recipe_details', recipe_id=recipe.recipeID) }}"
-                        class="btn btn-info btn-sm"><i class="fa fa-eye"></i></a>
-                    <a href="{{ url_for('edit_recipe', recipe_id=recipe.recipeID) }}"
-                        class="btn btn-warning btn-sm" data-toggle="modal"
-                        data-target="#updateModal{{ recipe.recipeID }}">
-                        <i class="fa fa-pen"></i></a>
-                    <button type="submit" class="btn btn-danger btn-sm" data-toggle="modal"
+        {% for recipe in recipes %}
+        <tr>
+            <td>{{ recipe.recipeName }}</td>
+            <td>{{ recipe.description }}</td>
+            <td>{% if recipe.averageRating %}
+                {{ recipe.averageRating }} ({{ recipe.ratingCount }})
+                {% else %}
+                Not rated
+                {% endif %}
+            </td>
+            <td>
+                <a href="{{ url_for('get_recipe_details', recipe_id=recipe.recipeID) }}"
+                   class="btn btn-info btn-sm"><i class="fa fa-eye"></i>
+                </a>
+                <a href="{{ url_for('edit_recipe', recipe_id=recipe.recipeID) }}"
+                   class="btn btn-warning btn-sm"><i class="fa fa-pen"></i>
+                </a>
+                <button type="submit" class="btn btn-danger btn-sm" data-toggle="modal"
                         data-target="#deleteRecipeModal"><i class="fa fa-trash"></i>
-                    </button>
+                </button>
 
-                    
-                    <!-- Update Recipe Modal-->
-                    <div class="modal fade" id="updateModal{{ recipe.recipeID }}" tabindex="-1" role="dialog"
-                        data-backdrop="false" aria-labelledby="updateModalLabel{{ recipe.recipeID }}"
-                        aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="updateModalLabel{{ recipe.recipeID }}">Update Recipe
-                                    </h5>
-                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                                <div class="modal-body">
-                                    <form id="updateForm{{ recipe.recipeID }}" method="POST"
-                                        action="{{ url_for('edit_recipe', recipe_id=recipe.recipeID) }}">
-                                        <div class="form-group">
-                                            <label for="recipe_name{{ recipe.recipeID }}">Recipe Name</label>
-                                            <input type="text" class="form-control"
-                                                id="recipe_name{{ recipe.recipeID }}" name="recipe_name"
-                                                value="{{ recipe.recipeName }}" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="description{{ recipe.recipeID }}">Description</label>
-                                            <textarea class="form-control" id="description{{ recipe.recipeID }}"
-                                                name="description" rows="5" required>{{ recipe.description }}</textarea>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="instruction{{ recipe.recipeID }}">Instruction</label>
-                                            <textarea class="form-control" id="instruction{{ recipe.recipeID }}"
-                                                name="instruction" rows="10"
-                                                required>{{ recipe.instruction }}</textarea>
-                                        </div>
-
-                                        <!-- Steps section -->
-                                        <div class="form-group">
-                                            <label>Steps</label>
-                                            <div id="stepsContainer{{ recipe.recipeID }}">
-                                                {% for step in recipe.steps %}
-                                                <div class="step-input">
-                                                    <input type="text" class="form-control" name="steps[]"
-                                                        value="{{ step }}" placeholder="Step {{ loop.index }}" required>
-                                                    {% if loop.index > 1 %}
-                                                    <button type="button"
-                                                        class="btn btn-danger remove-step-button">&times;</button>
-                                                    {% endif %}
-                                                </div>
-                                                {% endfor %}
-                                            </div>
-                                            <button type="button" class="btn btn-secondary"
-                                                id="addStepButton{{ recipe.recipeID }}">Add
-                                                Step</button>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="ingredients">Ingredients</label>
-                                            <div id="ingredientsContainer">
-                                                <div class="ingredient-input">
-                                                    <input type="text" class="form-control" name="ingredients[]"
-                                                        placeholder="Ingredient" required>
-                                                    <div class="row">
-                                                        <div class="col">
-                                                            <input type="number" class="form-control"
-                                                                name="quantities[]" placeholder="Qty" required>
-                                                        </div>
-                                                        <div class="col">
-                                                            <input type="text" class="form-control" name="units[]"
-                                                                placeholder="Measurement" required>
-                                                        </div>
-                                                        <div class="col-auto">
-                                                            <button type="button"
-                                                                class="btn btn-danger remove-ingredient-button">&times;</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button type="button" class="btn btn-secondary mt-3"
-                                                id="addIngredientButton">Add Ingredient</button>
-                                        </div>
-
-                                        <button type="submit" form="updateForm{{ recipe.recipeID }}"
-                                            class="btn btn-primary">Update
-                                            Recipe</button>
-                                    </form>
-                                </div>
+                <!-- Delete Recipe Modal -->
+                <div class="modal fade" id="deleteRecipeModal" tabindex="-1" role="dialog"
+                     aria-labelledby="deleteRecipeModalLabel" aria-hidden="true" data-backdrop="false">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="deleteRecipeModalTitle">Confirm Delete</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                Are you sure you want to delete this recipe? This is an irreversible action.
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                <form id="deleteRecipeForm" method="post"
+                                      action="{{ url_for('delete_recipe', recipe_id=recipe.recipeID) }}">
+                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                </form>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Delete Recipe Modal -->
-                    <div class="modal fade" id="deleteRecipeModal" tabindex="-1" role="dialog"
-                        aria-labelledby="deleteRecipeModalLabel" aria-hidden="true" data-backdrop="false">
-                        <div class="modal-dialog" role="document">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="deleteRecipeModalTitle">Confirm Delete</h5>
-                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                                <div class="modal-body">
-                                    Are you sure you want to delete this recipe? This is an irreversible action.
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                    <form id="deleteRecipeForm" method="post"
-                                        action="{{ url_for('delete_recipe', recipe_id=recipe.recipeID) }}">
-                                        <button type="submit" class="btn btn-danger">Delete</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
         </tbody>
     </table>
     {% endif %}
@@ -178,45 +89,21 @@
         <ul class="pagination justify-content-center">
             {% if page > 1 %}
             <li class="page-item"><a class="page-link" href="{{ url_for('my_recipes', page=page-1) }}"><i
-                        class="fas fa-chevron-left"></i></a></li>
+                    class="fas fa-chevron-left"></i></a></li>
             {% endif %}
             {% for p in range(1, total_pages + 1) %}
             <li class="page-item {% if p == page %}active{% endif %}"><a class="page-link"
-                    href="{{ url_for('my_recipes', page=p) }}">{{ p
-                    }}</a></li>
+                                                                         href="{{ url_for('my_recipes', page=p) }}">{{ p
+                }}</a></li>
             {% endfor %}
-            {% if page < total_pages %} <li class="page-item"><a class="page-link"
-                    href="{{ url_for('my_recipes', page=page+1) }}"><i class="fas fa-chevron-right"></i></a></li>
-                {% endif %}
+            {% if page < total_pages %}
+            <li class="page-item"><a class="page-link"
+                                     href="{{ url_for('my_recipes', page=page+1) }}"><i
+                    class="fas fa-chevron-right"></i></a></li>
+            {% endif %}
         </ul>
     </nav>
 </div>
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-
-        // Add Step functionality
-        const stepsContainer = document.getElementById('stepsContainer');
-        const addStepButton = document.getElementById('addStepButton');
-
-        addStepButton.addEventListener('click', function () {
-            const stepCount = stepsContainer.children.length + 1;
-            const stepDiv = document.createElement('div');
-            stepDiv.className = 'step-input';
-            stepDiv.innerHTML = `
-                <input type="text" class="form-control" name="steps[]" placeholder="Step ${stepCount}" required>
-                <button type="button" class="btn btn-danger remove-step-button">&times;</button>
-            `;
-            stepsContainer.appendChild(stepDiv);
-        });
-
-        stepsContainer.addEventListener('click', function (event) {
-            if (event.target.classList.contains('remove-step-button')) {
-                event.target.parentElement.remove();
-            }
-        });
-
-    });
-</script>
-</script>
-
+{% endblock %}
+{% block scripts %}
 {% endblock %}
