@@ -3,67 +3,106 @@
 {% block title %}{{ recipe.recipeName }}{% endblock %}
 
 {% block content %}
-
-<div class="container-fluid">
-    <div class="row">
-        <div class="col">
-            <h1>{{ recipe.recipeName }}</h1>
-            <p class="lead">{{ recipe.description }}</p>
-            <p>
-                <span class="font-weight-bold">Average Rating:</span> {{ recipe.averageRating }} ({{ recipe.ratingCount
-                }} ratings)
-            </p>
-        </div>
-    </div>
-</div>
-
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card">
-                <h2 class="card-header">Ingredients</h2>
-                <div class="card-body">
-                    {% for ingredient in ingredients %}
-                    <a>{{ ingredient.quantity }} {{ ingredient.unit }} of {{
-                        ingredient.ingredientName }}
-                    </a><br>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <h2 class="card-header">Directions</h2>
-                <div class="card-body">
-                    {% for direction in directions %}
-                    <p>Step {{direction.instructionOrder}}. {{ direction.instruction }}</p>
-                    {% endfor %}
-                </div>
-
+<div class="container-fluid" style="width: 80%">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col">
+                <h1>{{ recipe.recipeName }}</h1>
+                <p class="lead">{{ recipe.description }}</p>
+                <p>
+                    <span class="font-weight-bold">Average Rating:</span> {{ recipe.averageRating }} ({{
+                    recipe.ratingCount
+                    }} ratings)
+                </p>
             </div>
         </div>
     </div>
-</div>
 
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col">
-            <div class="card">
-                <div class="card-body">
-                    <p class="text-secondary mb-0">
-                        Created by {{ recipe.username }}<br>
-                        {{ recipe.created_at }}
-                    </p>
+    {% if username==recipe.username %}
+    <div class="col-md-6">
+        <a href="{{ url_for('edit_recipe', recipe_id=recipe.recipeID) }}"
+           class="btn btn-warning btn-sm"><i class="fa fa-pen"></i>
+        </a>
+        <button type="submit" class="btn btn-danger btn-sm" data-toggle="modal"
+                data-target="#deleteRecipeModal"><i class="fa fa-trash"></i>
+        </button>
+    </div>
+    <!-- Delete Recipe Modal -->
+    <div class="modal fade" id="deleteRecipeModal" tabindex="-1" role="dialog"
+         aria-labelledby="deleteRecipeModalLabel" aria-hidden="true" data-backdrop="false">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteRecipeModalTitle">Confirm Delete</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete this recipe? This is an irreversible action.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <form id="deleteRecipeForm" method="post"
+                          action="{{ url_for('delete_recipe', recipe_id=recipe.recipeID) }}">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
-</div>
+    {% endif %}
 
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col">
-            <a href="{{ url_for('my_recipes') }}" class="btn btn-secondary">Back to My Recipes</a>
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <h2 class="card-header">Ingredients</h2>
+                    <div class="card-body">
+                        {% for ingredient in ingredients %}
+                        <a>{{ ingredient.quantity }} {{ ingredient.unit }} {{ ingredient.ingredientName }}
+                        </a><br>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <h2 class="card-header">Directions</h2>
+                    <div class="card-body">
+                        {% for direction in directions %}
+                        <p>Step {{direction.instructionOrder}}. {{ direction.instruction }}</p>
+                        {% endfor %}
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col">
+                <div class="card">
+                    <div class="card-body">
+                        <p class="text-secondary mb-0">
+                            Created by {{ recipe.username }}<br>
+                            {{ recipe.created_at }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-md-6">
+                <a href="javascript:history.go(-1)" class="btn btn-secondary">Back</a>
+                {% if user_logged_in %}
+                <button type="button" class="btn btn-success"> Rate</button>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>

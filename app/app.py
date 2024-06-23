@@ -264,7 +264,6 @@ def change_password():
 # Recipe CRUD
 # Get all recipes
 @app.route('/recipes')
-@login_required
 def get_recipes():
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -289,11 +288,71 @@ def get_recipes():
 
     finally:
         cursor.close()
+        db.close()
+
+
+@app.route('/search_by_ingredient', methods=['POST'])
+def search_by_ingredient():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        # Get input data from form
+        ingredients_input = request.form.get('ingredients', '').strip()
+        search_option = request.form.get('search_option', 'only_listed')
+
+        # Split ingredients_input into a list of ingredients
+        ingredients_list = [ingredient.strip().lower() for ingredient in ingredients_input.split(',')]
+
+        # Construct the SQL query with LIKE for partial matching
+        if search_option == 'only_listed':
+            # Search for recipes containing all listed ingredients
+            select_recipes_query = """
+                SELECT r.*
+                FROM Recipe r
+                JOIN Recipe_Ingredient ri ON r.recipeID = ri.recipeID
+                JOIN Ingredient i ON ri.ingredientID = i.ingredientID
+                WHERE {}
+                GROUP BY r.recipeID
+                HAVING COUNT(DISTINCT i.ingredientID) = {}
+            """.format(' AND '.join(['LOWER(i.ingredientName) LIKE %s'] * len(ingredients_list)), len(ingredients_list))
+
+            # Adjust ingredients_list for LIKE operation
+            ingredients_list = ['%' + ingredient + '%' for ingredient in ingredients_list]
+
+        elif search_option == 'with_more':
+            # Search for recipes containing any of the listed ingredients
+            select_recipes_query = """
+                SELECT DISTINCT r.*
+                FROM Recipe r
+                JOIN Recipe_Ingredient ri ON r.recipeID = ri.recipeID
+                JOIN Ingredient i ON ri.ingredientID = i.ingredientID
+                WHERE {}
+            """.format(' OR '.join(['LOWER(i.ingredientName) LIKE %s'] * len(ingredients_list)))
+
+            # Adjust ingredients_list for LIKE operation
+            ingredients_list = ['%' + ingredient + '%' for ingredient in ingredients_list]
+
+        # Execute the query with adjusted ingredients_list
+        cursor.execute(select_recipes_query, ingredients_list)
+        recipes = cursor.fetchall()
+
+        if not recipes:
+            flash('No recipes found for the specified ingredients.', 'info')
+            return render_template('search_by_ingredient.html', recipes=[])
+
+        return render_template('search_by_ingredient.html', recipes=recipes)
+
+    except mysql.connector.Error as err:
+        flash(f"Database error: {err}", 'danger')
+        return redirect(url_for('get_recipes'))
+
+    finally:
+        cursor.close()
+        db.close()
 
 
 # Get Recipe
 @app.route('/recipes/<int:recipe_id>')
-@login_required
 def get_recipe_details(recipe_id):
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -401,62 +460,78 @@ def my_recipes():
 
 
 # Create Recipe
-@app.route('/recipes/create', methods=['POST'])
+@app.route('/recipes/create', methods=['GET', 'POST'])
 @login_required
 def create_recipe():
     db = get_db()
     cursor = db.cursor()
 
-    try:
-        recipe_name = request.form['recipeName']
-        description = request.form['description']
-        created_by = session.get('user_id')
+    if request.method == 'POST':
+        try:
+            recipe_name = request.form['recipe_name']
+            description = request.form['description']
+            created_by = session['user_id']
 
-        # Insert recipe
-        cursor.execute(
-            'INSERT INTO Recipe (recipeName, description, created_by) VALUES (%s, %s, %s, %s)',
-            (recipe_name, description, created_by)
-        )
-        recipe_id = cursor.lastrowid
-
-        # Insert ingredients
-        ingredient_names = request.form.getlist('ingredient_name[]')
-        quantities = request.form.getlist('quantity[]')
-        units = request.form.getlist('unit[]')
-
-        for name, quantity, unit in zip(ingredient_names, quantities, units):
+            # Insert recipe
             cursor.execute(
-                'INSERT INTO Ingredient (ingredientName) VALUES (%s) ON DUPLICATE KEY UPDATE ingredientID=LAST_INSERT_ID(ingredientID)',
-                (name,)
+                'INSERT INTO Recipe (recipeName, description, created_by) VALUES (%s, %s, %s)',
+                (recipe_name, description, created_by)
             )
-            ingredient_id = cursor.lastrowid
+            recipe_id = cursor.lastrowid
 
-            cursor.execute(
-                'INSERT INTO Recipe_Ingredient (recipeID, ingredientID, quantity, unit) VALUES (%s, %s, %s, %s)',
-                (recipe_id, ingredient_id, quantity, unit)
-            )
+            # Insert directions
+            directions = request.form.getlist('directions[]')
+            for order, direction in enumerate(directions, start=1):
+                cursor.execute(
+                    'INSERT INTO Recipe_Direction (recipeID, instructionOrder, instruction) VALUES (%s, %s, %s)',
+                    (recipe_id, order, direction)
+                )
 
-        # Insert directions
-        directions = request.form.getlist('direction[]')
-        for order, direction in enumerate(directions, start=1):
-            cursor.execute(
-                'INSERT INTO Recipe_Direction (recipeID, instructionOrder, instruction) VALUES (%s, %s, %s)',
-                (recipe_id, order, direction)
-            )
+            # Insert ingredients
+            ingredients = request.form.getlist('ingredients[]')
+            quantities = request.form.getlist('quantities[]')
+            units = request.form.getlist('units[]')
 
-        db.commit()
+            for ingredient, quantity, unit in zip(ingredients, quantities, units):
+                # Check if ingredient already exists
+                cursor.execute(
+                    'SELECT ingredientID FROM Ingredient WHERE LOWER(ingredientName) = %s',
+                    (ingredient.strip().lower(),)
+                )
+                existing_ingredient = cursor.fetchone()
 
-        flash('Recipe created!', 'success')
-        return redirect(url_for('recipes'))
+                if existing_ingredient:
+                    ingredient_id = existing_ingredient[0]
+                else:
+                    # Insert new ingredient
+                    cursor.execute(
+                        'INSERT INTO Ingredient (ingredientName) VALUES (%s)',
+                        (ingredient,)
+                    )
+                    ingredient_id = cursor.lastrowid
 
-    except mysql.connector.Error as err:
-        db.rollback()
-        flash(f"Error creating recipe: {err}", 'danger')
-        return redirect(url_for('recipes'))
+                # Insert into Recipe_Ingredient table
+                cursor.execute(
+                    'INSERT INTO Recipe_Ingredient (recipeID, ingredientID, quantity, unit) VALUES (%s, %s, %s, %s)',
+                    (recipe_id, ingredient_id, quantity, unit)
+                )
 
-    finally:
-        cursor.close()
-        db.close()
+            db.commit()
+
+            flash('Recipe created successfully!', 'success')
+            return redirect(url_for('get_recipes'))  # Redirect to a page where recipes are listed
+
+        except mysql.connector.Error as err:
+            db.rollback()
+            flash(f"Error creating recipe: {err}", 'danger')
+            return redirect(url_for('create_recipe'))
+
+        finally:
+            cursor.close()
+            db.close()
+
+    # Render the form if it's a GET request or if there was an error
+    return render_template('add_recipe.html')
 
 
 @app.route('/my_recipes/edit/<int:recipe_id>', methods=['GET', 'POST'])
@@ -509,8 +584,8 @@ def edit_recipe(recipe_id):
 
                 # Check if ingredientName exists in Ingredient table
                 cursor.execute(
-                    'SELECT ingredientID FROM Ingredient WHERE ingredientName = %s',
-                    (ingredient_name,)
+                    'SELECT ingredientID FROM Ingredient WHERE LOWER(ingredientName) = %s',
+                    (ingredient_name.strip().lower(),)
                 )
                 existing_ingredient = cursor.fetchone()
 
@@ -603,64 +678,6 @@ def delete_recipe(recipe_id):
         db.close()
 
     return redirect(url_for('my_recipes'))
-
-
-# Ingredients
-# Add Ingredient
-@app.route('/ingredient/create', methods=['POST'])
-@login_required
-def add_ingredient():
-    if request.method == 'POST':
-        ingredient_name = request.form['ingredientName']
-        try:
-            db = get_db()
-            cursor = db.cursor()
-
-            # Example: Inserting into a table named Ingredient
-            cursor.execute('INSERT INTO Ingredient (ingredientName) VALUES (%s)', (ingredient_name,))
-            db.commit()
-
-            flash('Ingredient added successfully', 'success')
-
-        except mysql.connector.Error as err:
-            flash(f"Error adding ingredient: {err}", 'danger')
-
-        finally:
-            cursor.close()
-            return redirect(url_for('get_recipes'))
-
-
-# Update Ingredient
-@app.route('/ingredient/update/<int:ingredient_id>', methods=['POST'])
-@login_required
-def update_ingredient(ingredient_id):
-    db = get_db()
-    cursor = db.cursor()
-
-    try:
-        ingredient_name = request.form['ingredientName']
-
-        cursor.execute('SELECT ingredientName FROM Ingredient WHERE ingredientID = %s', (ingredient_id,))
-        ingredient = cursor.fetchone()
-
-        if ingredient is None:
-            flash('Ingredient not found', 'danger')
-            return redirect(url_for('get_recipes'))
-
-        # Perform update in the database
-        cursor.execute('UPDATE Ingredient SET ingredientName=%s WHERE ingredientID=%s',
-                       (ingredient_name, ingredient_id))
-        db.commit()
-
-        flash('Ingredient updated successfully', 'success')
-        return redirect(url_for('get_recipes'))  # Adjust this redirection as per your application flow
-
-    except mysql.connector.Error as err:
-        flash(f"Error updating ingredient: {err}", 'danger')
-        return redirect(url_for('get_recipes'))  # Adjust this redirection as per your application flow
-
-    finally:
-        cursor.close()
 
 
 # Community

@@ -31,11 +31,11 @@
                     <a class="nav-link text-dark {% if request.path == '/' %} active bg-light text-dark {% endif %}"
                        href="/">Home</a>
                 </li>
-                {% if user_logged_in %}
                 <li class="nav-item pr-5">
                     <a class="nav-link text-dark {% if request.path == '/recipes' %} active bg-light text-dark {% endif %}"
                        href="/recipes">Discover</a>
                 </li>
+                {% if user_logged_in %}
                 <li class="nav-item pr-5">
                     <a class="nav-link text-dark {% if request.path == '/community' %} active bg-light text-dark{% endif %}"
                        href="/community">Community</a>

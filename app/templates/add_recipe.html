@@ -1,66 +1,64 @@
 {% extends "shared/layout.html" %}
 
-{% block title %}Edit Recipe{% endblock %}
+{% block title %}Create Recipe{% endblock %}
 
 {% block content %}
 
-<div class="container-fluid" style="width: 60%">
-    <h1>Edit Recipe</h1>
-    <form method="POST" action="{{ url_for('edit_recipe', recipe_id=recipe.recipeID) }}">
+<div class="container-fluid" style="width: 65%">
+    <h1>Create Recipe</h1>
+    <form method="POST" action="{{ url_for('create_recipe') }}">
         <div class="form-group">
             <label for="recipeName">Recipe Name</label>
-            <input type="text" class="form-control" id="recipeName" name="recipe_name" value="{{ recipe.recipeName }}"
+            <input type="text" class="form-control" id="recipeName" name="recipe_name" placeholder="Enter recipe name"
                    required>
         </div>
         <div class="form-group">
             <label for="description">Description</label>
-            <textarea class="form-control" id="description" name="description">{{ recipe.description }}</textarea>
+            <textarea class="form-control" id="description" name="description"
+                      placeholder="Enter Description"></textarea>
         </div>
         <div id="directionsContainer">
             <label for="directions">Steps</label>
-            {% for direction in directions %}
             <div class="form-group direction">
                 <div class="input-group">
                     <div class="input-group-prepend">
-                        <span class="input-group-text step-number">{{ loop.index }}</span>
+                        <span class="input-group-text step-number"></span>
                     </div>
-                    <input type="text" class="form-control step-input" name="directions[]" value="{{ direction.instruction }}"
+                    <input type="text" class="form-control step-input" name="directions[]" placeholder="Enter step"
                            required>
                     <div class="input-group-append">
-                        <button type="button" class="btn btn-danger btn-sm removeDirection"><i class="fas fa-trash"></i></button>
+                        <button type="button" class="btn btn-danger btn-sm removeDirection"><i class="fas fa-trash"></i>
+                        </button>
                     </div>
                 </div>
             </div>
-            {% endfor %}
         </div>
         <button type="button" class="btn btn-secondary mb-3" id="addDirection">Add Step</button>
         <div class="container-md" id="ingredientsContainer">
-            {% for ingredient in ingredients %}
             <div class="form-row mb-3 ingredient">
                 <div class="form-group col-md-6">
                     <label>Ingredient</label>
-                    <input type="text" class="form-control" name="ingredients[]" value="{{ ingredient.ingredientName }}"
+                    <input type="text" class="form-control" name="ingredients[]" placeholder="Enter ingredient"
                            required>
                 </div>
                 <div class="form-group col-md-1">
                     <label>Quantity</label>
-                    <input type="number" class="form-control" name="quantities[]" value="{{ ingredient.quantity }}"
-                           required>
+                    <input type="number" class="form-control" name="quantities[]" required>
                 </div>
                 <div class="form-group col-md-4">
                     <label>Unit</label>
-                    <input type="text" class="form-control" name="units[]" value="{{ ingredient.unit }}" required>
+                    <input type="text" class="form-control" name="units[]" placeholder="Enter unit" required>
                 </div>
                 <div class="form-group col-md-1">
                     <label style="visibility: hidden">Remove</label>
-                    <button type="button" class="btn btn-danger btn-sm removeIngredient"><i class="fas fa-trash"></i></button>
+                    <button type="button" class="btn btn-danger btn-sm removeIngredient"><i class="fas fa-trash"></i>
+                    </button>
                 </div>
             </div>
-            {% endfor %}
         </div>
         <button type="button" class="btn btn-secondary mb-3" id="addIngredient">Add Ingredient</button>
         <div class="form-group">
-            <button type="submit" class="btn btn-primary">Save changes</button>
+            <button type="submit" class="btn btn-primary">Add Recipe</button>
             <a href="javascript:history.go(-1)" class="btn btn-secondary">Cancel</a>
         </div>
     </form>

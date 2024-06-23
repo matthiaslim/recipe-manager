@@ -17,6 +17,9 @@
             </div>
         </div>
     </form>
+    <div class="d-flex justify-content-end" style="width: 90%;">
+        <a class="btn btn-dark ml-1" href="{{url_for('create_recipe')}}"><i class="fas fa-plus"></i> Add Recipe</a>
+    </div>
     {% if total_count==0 %}
     <div class="container-fluid">
         <a>No recipes found</a>
@@ -36,30 +39,32 @@
         <tr>
             <td>{{ recipe.recipeName }}</td>
             <td>{{ recipe.description }}</td>
-            <td>{% if recipe.averageRating %}
+            <td>
+                {% if recipe.averageRating %}
                 {{ recipe.averageRating }} ({{ recipe.ratingCount }})
                 {% else %}
                 Not rated
                 {% endif %}
             </td>
             <td>
-                <a href="{{ url_for('get_recipe_details', recipe_id=recipe.recipeID) }}"
-                   class="btn btn-info btn-sm"><i class="fa fa-eye"></i>
+                <a href="{{ url_for('get_recipe_details', recipe_id=recipe.recipeID) }}" class="btn btn-info btn-sm"><i
+                        class="fa fa-eye"></i>
                 </a>
-                <a href="{{ url_for('edit_recipe', recipe_id=recipe.recipeID) }}"
-                   class="btn btn-warning btn-sm"><i class="fa fa-pen"></i>
+                <a href="{{ url_for('edit_recipe', recipe_id=recipe.recipeID) }}" class="btn btn-warning btn-sm"><i
+                        class="fa fa-pen"></i>
                 </a>
-                <button type="submit" class="btn btn-danger btn-sm" data-toggle="modal"
-                        data-target="#deleteRecipeModal"><i class="fa fa-trash"></i>
+                <button type="button" class="btn btn-danger btn-sm" data-toggle="modal"
+                        data-target="#deleteRecipeModal{{ recipe.recipeID }}"><i class="fa fa-trash"></i>
                 </button>
 
                 <!-- Delete Recipe Modal -->
-                <div class="modal fade" id="deleteRecipeModal" tabindex="-1" role="dialog"
+                <div class="modal fade" id="deleteRecipeModal{{ recipe.recipeID }}" tabindex="-1" role="dialog"
                      aria-labelledby="deleteRecipeModalLabel" aria-hidden="true" data-backdrop="false">
                     <div class="modal-dialog" role="document">
                         <div class="modal-content">
                             <div class="modal-header">
-                                <h5 class="modal-title" id="deleteRecipeModalTitle">Confirm Delete</h5>
+                                <h5 class="modal-title" id="deleteRecipeModalTitle{{ recipe.recipeID }}">Confirm
+                                    Delete</h5>
                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
@@ -69,7 +74,7 @@
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                <form id="deleteRecipeForm" method="post"
+                                <form id="deleteRecipeForm{{ recipe.recipeID }}" method="post"
                                       action="{{ url_for('delete_recipe', recipe_id=recipe.recipeID) }}">
                                     <button type="submit" class="btn btn-danger">Delete</button>
                                 </form>
