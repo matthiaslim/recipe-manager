@@ -1,19 +1,19 @@
 body {
     background-color: #eeeeee;
     font-family: Montserrat, 'sans-serif';
-    color:black;
+    color: black;
     width: 100%;
     overflow-x: hidden;
-  }
+}
 
 .grey-bg {
     background-color: hsl(0, 0%, 97%);
     padding: 24px;
     text-align: center;
-  }
-  
+}
+
 .button {
-    color:white;
+    color: white;
     background-color: black;
     border: none;
     text-align: center;
@@ -27,22 +27,23 @@ body {
     font-weight: bold;
 }
 
-.container{
+.container {
     justify-content: center;
-    display:flex;
-    gap:10px;
+    display: flex;
+    gap: 10px;
 }
 
 .center {
     margin: auto;
     width: 30%;
-  }
-.centerflex{
+}
+
+.centerflex {
     display: flex;
     flex-direction: column;
     justify-content: center;
     text-align: center;
-    margin:15%;
+    margin: 15%;
 }
 
 form {
@@ -50,6 +51,7 @@ form {
     flex-direction: column;
     justify-content: center;
 }
+
 section {
     width: auto;
     /* border: 1px solid #2d2d2d; */
@@ -59,9 +61,19 @@ section {
     align-items: center;
 }
 
-.list-group{
+.table {
+    width: 80%;
+    margin: 20px auto;
+}
+
+.table th, .table td {
+    vertical-align: middle;
+}
+
+.list-group {
     width: 99.5%;
 }
+
 .list-group-item {
     /* border: 1px solid red; */
     border-bottom: 2px solid black;
@@ -116,8 +128,9 @@ section {
     font-size: 0.9rem;
     margin: 5px 0;
 }
+
 .replybutton {
-    color:white;
+    color: white;
     background-color: black;
     border: none;
     text-align: center;
@@ -127,8 +140,9 @@ section {
     border-radius: 8px;
     margin-left: auto;
 }
+
 .submitbutton {
-    color:white;
+    color: white;
     background-color: black;
     border: none;
     text-align: center;
@@ -137,6 +151,7 @@ section {
     border-radius: 8px;
     margin: auto;
 }
+
 .modal {
     display: none;
     position: fixed;
@@ -147,8 +162,8 @@ section {
     width: 100%;
     height: 100%;
     overflow: auto;
-    background-color: rgb(0,0,0);
-    background-color: rgba(0,0,0,0.4);
+    background-color: rgb(0, 0, 0);
+    background-color: rgba(0, 0, 0, 0.4);
 }
 
 .modal-content {

@@ -10,15 +10,6 @@
         margin: 20px auto;
     }
 
-    .table {
-        width: 80%;
-        margin: 20px auto;
-    }
-
-    .table th, .table td {
-        vertical-align: middle;
-    }
-
     .step-input {
         display: flex;
         align-items: center;
@@ -36,7 +27,9 @@
         <div class="col">
             <div class="input-group mb-3">
                 <input id="searchRecipe" class="form-control" type="text" placeholder="Search Recipe..">
-                <a class="btn btn-primary" href="{{ url_for('create_recipe') }}">+</a>
+                <button class="btn btn-dark rounded-circle ml-2" data-toggle="modal" data-target=".bd-example-modal-lg">
+                    +
+                </button>
             </div>
         </div>
     </div>
@@ -45,26 +38,34 @@
 <div class="container-fluid text-center">
     <table id="recipeTable" class="table table-bordered table-hover">
         <thead class="thead-dark">
-            <tr>
-                <th>Title</th>
-                <th>Description</th>
-                <th>Details</th>
-            </tr>
+        <tr>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Rating</th>
+            <th>Recipe By</th>
+        </tr>
         </thead>
         <tbody>
-            {% for recipe in recipes %}
-            <tr>
-                <td>{{ recipe.recipeName }}</td>
-                <td>{{ recipe.description }}</td>
-                <td><a href="{{ url_for('get_recipe_details', recipe_id=recipe.recipeID) }}">Details</a></td>
-            </tr>
-            {% endfor %}
+        {% for recipe in recipes %}
+        <tr class="recipe-row" data-recipe-id="{{ recipe.recipeID }}">
+            <td>{{ recipe.recipeName }}</td>
+            <td>{{ recipe.description }}</td>
+            <td>{% if recipe.averageRating %}
+                {{ recipe.averageRating }} ({{ recipe.ratingCount }})
+                {% else %}
+                Not rated
+                {% endif %}
+            </td>
+            <td>{{ recipe.created_by }}</td>
+        </tr>
+        {% endfor %}
         </tbody>
     </table>
 </div>
 
 <!-- Modal -->
-<div class="modal fade bd-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" aria-hidden="true" data-backdrop="false">
+<div class="modal fade bd-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel"
+     aria-hidden="true" data-backdrop="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -74,7 +75,8 @@
                 </button>
             </div>
             <div class="modal-body">
-                <form method="post" action="{{ url_for('create_recipe') }}" enctype="multipart/form-data" name="addRecipeForm">
+                <form method="post" action="{{ url_for('create_recipe') }}" enctype="multipart/form-data"
+                      name="addRecipeForm">
                     <div class="form-group">
                         <label for="recipeName">Title</label>
                         <input type="text" class="form-control" id="recipeName" name="recipeName" required>
@@ -84,7 +86,7 @@
                         <input type="text" class="form-control" id="description" name="description" required>
                     </div>
                     <div class="form-group">
-                        <label for="steps">Steps</label>
+                        <label for="stepsContainer">Steps</label>
                         <div id="stepsContainer">
                             <div class="step-input">
                                 <input type="text" class="form-control" name="steps[]" placeholder="Step 1" required>
@@ -102,15 +104,16 @@
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.11.4/js/jquery.dataTables.min.js"></script>
+{% endblock %}
+
+{% block scripts %}
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function () {
         // Search functionality
         const searchInput = document.getElementById('searchRecipe');
         const tableRows = document.querySelectorAll('#recipeTable tbody tr');
 
-        searchInput.addEventListener('input', function() {
+        searchInput.addEventListener('input', function () {
             const searchTerm = searchInput.value.toLowerCase().trim();
 
             tableRows.forEach(row => {
@@ -129,7 +132,7 @@
         const stepsContainer = document.getElementById('stepsContainer');
         const addStepButton = document.getElementById('addStepButton');
 
-        addStepButton.addEventListener('click', function() {
+        addStepButton.addEventListener('click', function () {
             const stepCount = stepsContainer.children.length + 1;
             const stepDiv = document.createElement('div');
             stepDiv.className = 'step-input';
@@ -140,7 +143,7 @@
             stepsContainer.appendChild(stepDiv);
         });
 
-        stepsContainer.addEventListener('click', function(event) {
+        stepsContainer.addEventListener('click', function (event) {
             if (event.target.classList.contains('remove-step-button')) {
                 event.target.parentElement.remove();
             }
