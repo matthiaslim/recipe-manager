@@ -4,52 +4,25 @@
 
 {% block content %}
 
-<style>
-    .input-group {
-        width: 60%;
-        margin: 20px auto;
-    }
-
-    .table {
-        width: 80%;
-        margin: 20px auto;
-    }
-
-    .table th,
-    .table td {
-        vertical-align: middle;
-    }
-
-    .add-button {
-        position: absolute;
-        right: 20px;
-    }
-
-    .step-input {
-        display: flex;
-        align-items: center;
-        margin-bottom: 10px;
-    }
-
-    .step-input input {
-        flex: 1;
-        margin-right: 10px;
-    }
-</style>
-
 <div class="container-fluid" style="width: 80%;">
     <div class="container-fluid text-center">
         <h2>Recipes</h2>
         <div class="row">
             <div class="col">
-                <div class="input-group mb-3">
-                    <input id="searchRecipes" class="form-control" type="text" placeholder="Search Recipes..">
-                    {% if user_logged_in %}
-                    <a class="btn btn-dark ml-1" href="{{url_for('create_recipe')}}"><i class="fas fa-plus"></i> Add
-                        Recipe
-                    </a>
-                    {% endif %}
+                <div class="d-flex justify-content-center">
+                    <form id="searchForm" class="form-inline" action="{{ url_for('get_recipes') }}" method="GET">
+                        <input id="searchRecipes" class="form-control" type="text" placeholder="Search Recipes.."
+                               name="search" value="{{ search_term }}">
+                        <button type="submit" class="btn btn-outline-success ml-2">Search</button>
+                    </form>
                 </div>
+            </div>
+            <div class="col">
+                {% if user_logged_in %}
+                <a class="btn btn-dark ml-1" href="{{url_for('create_recipe')}}"><i class="fas fa-plus"></i> Add
+                    Recipe
+                </a>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -118,68 +91,31 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.datatables.net/1.11.4/js/jquery.dataTables.min.js"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        // Search functionality
-        const searchRecipeInput = document.getElementById('searchRecipes');
-        const tableRecipeRows = document.querySelectorAll('#recipeTable tbody tr');
-
-        searchRecipeInput.addEventListener('input', function () {
-            const searchTerm = searchRecipeInput.value.toLowerCase().trim();
-
-            tableRecipeRows.forEach(row => {
-                const title = row.cells[0].textContent.toLowerCase();
-                const description = row.cells[1].textContent.toLowerCase();
-                const created_by = row.cells[2].textContent.toLowerCase();
-
-                if (title.includes(searchTerm) || description.includes(searchTerm) || created_by.includes(searchTerm)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
+    document.addEventListener('DOMContentLoaded', function () {
+        // Handle search input change event
+        document.getElementById('searchRecipes').addEventListener('submit', function (event) {
+            event.preventDefault();
+            searchRecipes();
         });
 
-        const searchIngredientInput = document.getElementById('searchIngredients');
-        const tableIngredientRows = document.querySelectorAll('#ingredientTable tbody tr');
+        // Function to handle dynamic search
+        function searchRecipes() {
+            const searchForm = document.getElementById('searchForm');
+            const formData = new FormData(searchForm);
 
-        searchIngredientInput.addEventListener('input', function () {
-            const searchTerm = searchIngredientInput.value.toLowerCase().trim();
-
-            tableIngredientRows.forEach(row => {
-                const ingredientName = row.cells[0].textContent.toLowerCase();
-
-                if (ingredientName.includes(searchTerm)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-        });
-
-
-        // Add Step functionality
-        const stepsContainer = document.getElementById('stepsContainer');
-        const addStepButton = document.getElementById('addStepButton');
-
-        addStepButton.addEventListener('click', function () {
-            const stepCount = stepsContainer.children.length + 1;
-            const stepDiv = document.createElement('div');
-            stepDiv.className = 'step-input';
-            stepDiv.innerHTML = `
-                <input type="text" class="form-control" name="steps[]" placeholder="Step ${stepCount}" required>
-                <button type="button" class="btn btn-danger remove-step-button">&times;</button>
-            `;
-            stepsContainer.appendChild(stepDiv);
-        });
-
-        stepsContainer.addEventListener('click', function (event) {
-            if (event.target.classList.contains('remove-step-button')) {
-                event.target.parentElement.remove();
-            }
-        });
-
+            fetch(searchForm.action + '?' + new URLSearchParams(formData))
+                .then(response => response.text())
+                .then(html => {
+                    const recipesContainer = document.getElementById('recipesContainer');
+                    if (recipesContainer) {
+                        recipesContainer.innerHTML = html;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching search results:', error);
+                });
+        }
     });
 </script>
 {% endblock %}

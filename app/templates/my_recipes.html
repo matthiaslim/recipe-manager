@@ -4,28 +4,31 @@
 
 {% block content %}
 <div class="container-fluid">
-    <h2>My Recipes</h2>
-    <!-- Search Form -->
-    <form class="form-inline mb-3" method="POST" action="{{ url_for('my_recipes', search_term=search_term) }}">
-        <div class="form-row">
-            <div class="col-auto">
-                <input type="text" class="form-control" name="search_term" style="min-width: 300px; width: auto;"
-                       placeholder="Search by name or description" aria-label="search" value="{{ search_term }}">
+    <div class="container-fluid text-center">
+        <h2>My Recipes</h2>
+        <!-- Search Form -->
+        <form id="searchForm" class="form-inline mb-3" method="GET" action="{{ url_for('my_recipes') }}">
+            <div class="form-row">
+                <div class="col-auto">
+                    <input type="text" id="searchMyRecipes" class="form-control" name="search_term"
+                           style="min-width: 300px; width: auto;"
+                           placeholder="Search by name or description" aria-label="search" value="{{ search_term }}">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-outline-success ml-1">Search</button>
+                </div>
             </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-outline-success ml-1">Search</button>
-            </div>
-        </div>
-    </form>
-    <div class="d-flex justify-content-end" style="width: 90%;">
-        <a class="btn btn-dark ml-1" href="{{url_for('create_recipe')}}"><i class="fas fa-plus"></i> Add Recipe</a>
+        </form>
     </div>
-    {% if total_count==0 %}
+    <div class="d-flex justify-content-end" style="width: 90%;">
+        <a class="btn btn-dark ml-1" href="{{ url_for('create_recipe') }}"><i class="fas fa-plus"></i> Add Recipe</a>
+    </div>
+    {% if total == 0 %}
     <div class="container-fluid">
         <a>No recipes found</a>
     </div>
     {% else %}
-    <div class="table-responsive">
+    <div id="myRecipeContainer" class="table-responsive">
         <table class="table table-bordered">
             <thead class="thead-dark">
             <tr>
@@ -49,12 +52,9 @@
                 </td>
                 <td>
                     <a href="{{ url_for('get_recipe_details', recipe_id=recipe.recipeID) }}"
-                       class="btn btn-info btn-sm"><i
-                            class="fa fa-eye"></i>
-                    </a>
+                       class="btn btn-info btn-sm"><i class="fa fa-eye"></i></a>
                     <a href="{{ url_for('edit_recipe', recipe_id=recipe.recipeID) }}" class="btn btn-warning btn-sm"><i
-                            class="fa fa-pen"></i>
-                    </a>
+                            class="fa fa-pen"></i></a>
                     <button type="button" class="btn btn-danger btn-sm" data-toggle="modal"
                             data-target="#deleteRecipeModal{{ recipe.recipeID }}"><i class="fa fa-trash"></i>
                     </button>
@@ -72,11 +72,11 @@
                                     </button>
                                 </div>
                                 <div class="modal-body">
-                                    Are you sure you want to delete this recipe? This is an irreversible action.
+                                    Are you sure you want to delete this recipe? This action cannot be undone.
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                    <form id="deleteRecipeForm{{ recipe.recipeID }}" method="post"
+                                    <form id="deleteRecipeForm{{ recipe.recipeID }}" method="POST"
                                           action="{{ url_for('delete_recipe', recipe_id=recipe.recipeID) }}">
                                         <button type="submit" class="btn btn-danger">Delete</button>
                                     </form>
@@ -97,5 +97,33 @@
     {% endif %}
 </div>
 {% endblock %}
+
 {% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Handle search input change event
+        document.getElementById('searchMyRecipes').addEventListener('submit', function (event) {
+            event.preventDefault();
+            searchRecipes();
+        });
+
+        // Function to handle dynamic search
+        function searchRecipes() {
+            const searchForm = document.getElementById('searchForm');
+            const formData = new FormData(searchForm);
+
+            fetch(searchForm.action + '?' + new URLSearchParams(formData))
+                .then(response => response.text())
+                .then(html => {
+                    const recipesContainer = document.getElementById('myRecipeContainer');
+                    if (recipesContainer) {
+                        recipesContainer.innerHTML = html;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching search results:', error);
+                });
+        }
+    });
+</script>
 {% endblock %}

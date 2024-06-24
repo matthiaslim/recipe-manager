@@ -53,7 +53,7 @@
         </div>
     </div>
     {% endif %}
-    
+
     <div class="container-fluid mt-4">
         <div class="row">
             <div class="col-md-6">
@@ -87,8 +87,7 @@
                 <div class="card">
                     <div class="card-body">
                         <p class="text-secondary mb-0">
-                            Created by {{ recipe.username }}<br>
-                            {{ recipe.created_At }}
+                            Created by {{ recipe.username }}
                         </p>
                     </div>
                 </div>
@@ -101,7 +100,8 @@
             <div class="col-md-6">
                 <a href="javascript:history.go(-1)" class="btn btn-secondary">Back</a>
                 {% if user_logged_in %}
-                <button type="button" class="btn btn-success" data-toggle="modal" data-target="#rateRecipeModal"> Rate</button>
+                <button type="button" class="btn btn-success" data-toggle="modal" data-target="#rateRecipeModal"> Rate
+                </button>
                 {% endif %}
             </div>
         </div>
@@ -109,36 +109,86 @@
 </div>
 
 <!-- Rate Recipe Modal -->
-<div class="modal fade" id="rateRecipeModal" tabindex="-1" role="dialog" aria-labelledby="rateRecipeModalLabel" aria-hidden="true" data-backdrop="false">
+<div class="modal fade" id="rateRecipeModal" tabindex="-1" role="dialog" aria-labelledby="rateRecipeModalLabel"
+     aria-hidden="true" data-backdrop="false">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="rateRecipeModalTitle">Rate Recipe</h5>
+                <h5 class="modal-title" id="rateRecipeModalLabel">Rate Recipe</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body">
-                <form id="rateRecipeForm">
+                <form id="rateRecipeForm" method="POST" action="/add_rating">
                     <div class="form-group">
-                        <label for="rating">Rating (1-10):</label> <input type="range" class="form-control-range" id="rating" name="rating" min="1" max="10" step="1" value="5">
-                        <output for="rating" id="ratingOutput">5</output> <!-- to display the current value -->
+                        <label for="rating">Rating (1-5):</label>
+                        <input type="range" class="form-control-range" id="rating" name="rating" min="1" max="5"
+                               step="1" value="1" required>
+                        <output for="rating" id="ratingOutput">1</output> <!-- Display the current value -->
                     </div>
-                    
-                    <button type="button" class="btn btn-primary" id="submitRating">Submit Rating</button>
+                    <div class="form-group">
+                        <label for="comment">Comment:</label>
+                        <textarea class="form-control" id="comment" name="comment" rows="3"></textarea>
+                    </div>
+                    <!-- Hidden field to store recipe ID -->
+                    <input type="hidden" id="recipeId" name="recipe_id" value="{{recipe.recipeID}}">
+                    <button type="submit" class="btn btn-primary">Submit Rating</button>
                 </form>
             </div>
         </div>
     </div>
 </div>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var ratingInput = document.getElementById('rating');
-        var output = document.getElementById('ratingOutput');
 
-        // Update the output value whenever the slider changes
-        ratingInput.addEventListener('input', function() {
-            output.textContent = this.value;
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // DOM is fully loaded
+        var ratingInput = document.getElementById('rating');
+        var ratingOutput = document.getElementById('ratingOutput');
+        var submitButton = document.getElementById('submitRating');
+        var rateRecipeForm = document.getElementById('rateRecipeForm');
+
+        // Update output with current rating value
+        ratingInput.addEventListener('input', function () {
+            ratingOutput.textContent = ratingInput.value;
+        });
+
+        // Handle form submission
+        submitButton.addEventListener('click', function (event) {
+            event.preventDefault(); // Prevent default form submission
+
+            // Prepare data to send
+            var formData = new FormData(rateRecipeForm);
+
+            // Send data using fetch API
+            fetch('/add_rating', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Accept': 'application/json'
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Handle success response
+                    if (data.success) {
+                        alert('Rating submitted successfully!');
+                        // Optionally, update UI or close modal
+                        $('#rateRecipeModal').modal('hide'); // Assuming you are using jQuery for Bootstrap modal
+                    } else {
+                        alert('Failed to submit rating: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    // Handle error
+                    console.error('Error:', error);
+                    alert('Failed to submit rating. Please try again.');
+                });
         });
     });
 </script>
