@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS Recipe
 (
     recipeID      int          NOT NULL AUTO_INCREMENT,
     recipeName    varchar(255) NOT NULL,
-    description   varchar(255),
+    description   text,
     averageRating float(2)  DEFAULT 0.0,
     ratingCount   int       DEFAULT 0,
     created_by    int,
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS Recipe_Direction
 (
     recipeID         int          NOT NULL,
     instructionOrder int          NOT NULL,
-    instruction      varchar(255) NOT NULL,
+    instruction      text NOT NULL,
     PRIMARY KEY (recipeID, instructionOrder),
     FOREIGN KEY (recipeID) REFERENCES Recipe (recipeID) ON DELETE CASCADE -- Delete related directions when the recipe is deleted
 );
