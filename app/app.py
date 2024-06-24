@@ -264,56 +264,38 @@ def change_password():
 
 # Recipe CRUD
 # Get all recipes
-@app.route('/recipes', methods=['GET'])
+@app.route('/recipes')
 def get_recipes():
     db = get_db()
     cursor = db.cursor(dictionary=True)
 
     try:
-        search_term = request.args.get('search', '').strip()
+
+        # Get current page number
         page = request.args.get(get_page_parameter(), type=int, default=1)
         per_page = 5  # Number of recipes per page
+        offset = (page - 1) * per_page
 
-        if search_term:
-            # Fetch total number of matching recipes
-            cursor.execute(
-                'SELECT COUNT(*) as total FROM Recipe WHERE recipeName LIKE %s',
-                ('%' + search_term + '%',)
-            )
-            total = cursor.fetchone()['total']
+        # Fetch total number of recipes
+        cursor.execute('SELECT COUNT(*) as total FROM Recipe')
+        total = cursor.fetchone()['total']
 
-            # Fetch recipes for the current page with search term
-            cursor.execute(
-                'SELECT r.recipeID, r.recipeName, r.description, u.username '
-                'FROM Recipe r JOIN User u ON r.created_by = u.userID '
-                'WHERE r.recipeName LIKE %s '
-                'ORDER BY r.recipeID ASC '
-                'LIMIT %s OFFSET %s',
-                ('%' + search_term + '%', per_page, (page - 1) * per_page)
-            )
-        else:
-            # Fetch total number of all recipes
-            cursor.execute('SELECT COUNT(*) as total FROM Recipe')
-            total = cursor.fetchone()['total']
-
-            # Fetch recipes for the current page without search term
-            cursor.execute(
-                'SELECT r.recipeID, r.recipeName, r.description, u.username '
-                'FROM Recipe r JOIN User u ON r.created_by = u.userID '
-                'ORDER BY r.recipeID ASC '
-                'LIMIT %s OFFSET %s',
-                (per_page, (page - 1) * per_page)
-            )
-
+        # Fetch recipes for the current page
+        cursor.execute(
+            'SELECT r.recipeID, r.recipeName, r.description, u.username '
+            'FROM Recipe r JOIN User u ON r.created_by = u.userID '
+            'LIMIT %s OFFSET %s',
+            (per_page, offset)
+        )
         recipes = cursor.fetchall()
 
+        # Create pagination object
         pagination = Pagination(page=page, total=total, per_page=per_page, css_framework='bootstrap4')
 
-        return render_template('recipes.html', recipes=recipes, pagination=pagination, search_term=search_term)
+        return render_template('recipes.html', recipes=recipes, pagination=pagination)
 
     except mysql.connector.Error as err:
         flash(f"Database error: {err}", 'danger')
-        return redirect(url_for('index'))
 
     finally:
         cursor.close()
@@ -445,54 +427,43 @@ def my_recipes():
     user_id = session.get('user_id')
 
     try:
-        search_term = request.args.get('search_term', '').strip()
-        page = request.args.get(get_page_parameter(), type=int, default=1)
+        if request.method == 'POST':
+            search_term = request.form.get('search_term', '')
+            page = request.args.get('page', 1, type=int)
+        else:
+            search_term = request.args.get('search_term', '')
+            page = request.args.get('page', 1, type=int)
+
         per_page = 5  # Number of recipes per page
         offset = (page - 1) * per_page
 
+        # SQL query to fetch recipes with optional search filter
+        query = 'SELECT * FROM Recipe WHERE created_by = %s'
+        params = [user_id]
+
         if search_term:
-            # Fetch total number of matching recipes
-            cursor.execute(
-                'SELECT COUNT(*) as total FROM Recipe WHERE created_by = %s AND recipeName LIKE %s',
-                (user_id, '%' + search_term + '%',)
-            )
-            total = cursor.fetchone()['total']
+            query += ' AND (recipeName LIKE %s OR description LIKE %s)'
+            params.extend([f'%{search_term}%', f'%{search_term}%'])
 
-            # Fetch recipes for the current page with search term
-            cursor.execute(
-                'SELECT r.recipeID, r.recipeName, r.description, u.username '
-                'FROM Recipe r JOIN User u ON r.created_by = u.userID '
-                'WHERE r.created_by = %s AND r.recipeName LIKE %s '
-                'ORDER BY r.recipeID ASC '
-                'LIMIT %s OFFSET %s',
-                (user_id, '%' + search_term + '%', per_page, offset)
-            )
-        else:
-            # Fetch total number of all recipes
-            cursor.execute(
-                'SELECT COUNT(*) as total FROM Recipe WHERE created_by = %s',
-                (user_id,)
-            )
-            total = cursor.fetchone()['total']
+        query += ' LIMIT %s OFFSET %s'
+        params.extend([per_page, offset])
 
-            # Fetch recipes for the current page without search term
-            cursor.execute(
-                'SELECT r.recipeID, r.recipeName, r.description, u.username '
-                'FROM Recipe r JOIN User u ON r.created_by = u.userID '
-                'WHERE r.created_by = %s '
-                'ORDER BY r.recipeID ASC '
-                'LIMIT %s OFFSET %s',
-                (user_id, per_page, offset)
-            )
-
+        cursor.execute(query, params)
         recipes = cursor.fetchall()
 
+        # Get the total count of recipes created by the user
+        cursor.execute('SELECT COUNT(*) as count FROM Recipe WHERE created_by = %s', (user_id,))
+        total_count = cursor.fetchone()['count']
+
+        # Calculate the total number of pages
+        total_pages = (total_count + per_page - 1) // per_page
+
         # Create pagination object
-        pagination = Pagination(page=page, total=total, per_page=per_page, search=search_term,
+        pagination = Pagination(page=page, total=total_count, per_page=per_page, search=search_term,
                                 css_framework='bootstrap4')
 
-        return render_template('my_recipes.html', recipes=recipes, total=total, search_term=search_term,
-                               pagination=pagination)
+        return render_template('my_recipes.html', recipes=recipes, page=page, total_count=total_count,
+                               total_pages=total_pages, search_term=search_term, pagination=pagination)
 
     except (mysql.connector.Error, KeyError, TypeError) as err:
         flash(f"Database error: {err}", 'danger')
@@ -738,7 +709,7 @@ def get_replies(thread_id):
     cursor = db.cursor()
     try:
         cursor.execute('''
-            SELECT r.replyText, u.userName 
+            SELECT u.userName, r.replyText 
             FROM Reply r
             JOIN User u ON r.created_by = u.userID 
             WHERE r.threadID = %s
@@ -747,8 +718,7 @@ def get_replies(thread_id):
 
         return jsonify({
             'success': True,
-            # Adjusted to use userName for 'user' key in the response
-            'replies': [{'user': reply[1], 'reply': reply[0]} for reply in replies]
+            'replies': [{'user': reply[0], 'reply': reply[1]} for reply in replies]
         })
 
     except mysql.connector.Error as err:
@@ -876,46 +846,49 @@ def add_reply():
 
 @app.route('/add_rating', methods=['POST'])
 def add_rating():
+    db = get_db()
+    cursor = db.cursor()
+
+    data = request.get_json()
+    user = session.get('username', 'Anonymous')
+    user_id = session.get('user_id')
+    recipe_id = data.get('recipe_id')
+    rating = data.get('rating')
+    comment = data.get('comment', None)
+
+    # Validate input
     try:
-        # Retrieve data from form
-        user_id = session.get('user_id', 'Anonymous')
-        recipe_id = request.form.get('recipe_id')
-        rating = int(request.form.get('rating'))
-        comment = request.form.get('comment', None)
-
-        # Validate data
-        if user_id and recipe_id and 1 <= rating <= 5:
-            db = get_db()
-            cursor = db.cursor()
-
+        if user and recipe_id and rating is not None:
             try:
                 insert_query = "INSERT INTO Rating (userID, recipeID, rating, comment) VALUES (%s, %s, %s, %s)"
                 cursor.execute(insert_query, (user_id, recipe_id, rating, comment))
                 db.commit()
 
-                return redirect(url_for('get_recipe_details',  recipe_id=recipe_id))
+                rating_id = cursor.lastrowid
+
+                return jsonify({
+                    'success': True,
+                    'rating_id': rating_id
+                }), 200
 
             except mysql.connector.Error as err:
                 return jsonify({
                     'success': False,
                     'error': f"Error inserting into database: {err}"
                 }), 500
-
-            finally:
-                cursor.close()
-                db.close()
-
         else:
             return jsonify({
                 'success': False,
                 'error': 'Invalid Data'
             }), 400
-
-    except Exception as e:
+    except mysql.connector.Error as err:
         return jsonify({
             'success': False,
-            'error': f"Unexpected error: {str(e)}"
+            'error': f"Error inserting into database: {err}"
         }), 500
+    finally:
+        cursor.close()
+
 
 @app.route('/get_ratings/<int:recipeID>', methods=['GET'])
 def get_ratings_by_recipe_id(recipeID):
@@ -938,7 +911,6 @@ def get_ratings_by_recipe_id(recipeID):
         }), 500
     finally:
         cursor.close()
-        db.close()
 
 
 @app.route('/update_rating/<int:rating_id>', methods=['PUT'])
@@ -996,7 +968,6 @@ def update_rating(rating_id):
 
     finally:
         cursor.close()
-        db.close
 
 
 @app.route('/delete_rating/<int:rating_id>', methods=['DELETE'])
@@ -1052,7 +1023,6 @@ def delete_rating(rating_id):
 
     finally:
         cursor.close()
-        db.close()
 
 
 if __name__ == '__main__':
