@@ -846,47 +846,34 @@ def add_reply():
 
 @app.route('/add_rating', methods=['POST'])
 def add_rating():
+    user = session.get('username', 'Anonymous')
+    user_id = session.get('user_id')
+    recipe_id = request.form.get('recipe_id')
+    rating = request.form.get('rating')
+    comment = request.form.get('comment', None)
+
+    if not user_id or not recipe_id or not rating:
+        flash('Missing required data', 'danger')
+        return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
+
     db = get_db()
     cursor = db.cursor()
 
-    data = request.get_json()
-    user = session.get('username', 'Anonymous')
-    user_id = session.get('user_id')
-    recipe_id = data.get('recipe_id')
-    rating = data.get('rating')
-    comment = data.get('comment', None)
-
-    # Validate input
     try:
-        if user and recipe_id and rating is not None:
-            try:
-                insert_query = "INSERT INTO Rating (userID, recipeID, rating, comment) VALUES (%s, %s, %s, %s)"
-                cursor.execute(insert_query, (user_id, recipe_id, rating, comment))
-                db.commit()
+        insert_query = "INSERT INTO Rating (userID, recipeID, rating, comment) VALUES (%s, %s, %s, %s)"
+        cursor.execute(insert_query, (user_id, recipe_id, rating, comment))
+        db.commit()
 
-                flash(f"Rating sucessfully added", 'success')
-                return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
+        flash("Rating successfully added", 'success')
+        return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
-            except mysql.connector.Error as err:
-                flash(f"You have already added a rating: {err}", 'danger')
-                return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
-
-            finally:
-                cursor.close()
-                db.close()
-
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'Invalid Data'
-            }), 400
     except mysql.connector.Error as err:
-        return jsonify({
-            'success': False,
-            'error': f"Error inserting into database: {err}"
-        }), 500
+        flash(f"Database error: {err}", 'danger')
+        return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
+
     finally:
         cursor.close()
+        db.close()
 
 
 
