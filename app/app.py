@@ -893,13 +893,12 @@ def add_rating():
                 cursor.execute(insert_query, (user_id, recipe_id, rating, comment))
                 db.commit()
 
-                return redirect(url_for('get_recipe_details',  recipe_id=recipe_id))
+                flash(f"Rating sucessfully added", 'success')
+                return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
             except mysql.connector.Error as err:
-                return jsonify({
-                    'success': False,
-                    'error': f"Error inserting into database: {err}"
-                }), 500
+                flash(f"You have already added a rating: {err}", 'danger')
+                return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
 
             finally:
                 cursor.close()
@@ -916,6 +915,7 @@ def add_rating():
             'success': False,
             'error': f"Unexpected error: {str(e)}"
         }), 500
+
 
 @app.route('/get_ratings/<int:recipeID>', methods=['GET'])
 def get_ratings_by_recipe_id(recipeID):
