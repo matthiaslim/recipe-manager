@@ -109,10 +109,13 @@ BEGIN
     WHERE recipeID = NEW.recipeID;
 
     SELECT ratingCount INTO rating_count FROM Recipe WHERE recipeID = NEW.recipeID;
+    SET @allow_trigger_update = TRUE;
 
     UPDATE Recipe
     SET averageRating = ((averageRating * (rating_count - 1) + NEW.rating) / rating_count)
     WHERE recipeID = NEW.recipeID;
+
+    SET @allow_trigger_update = FALSE;
 END //
 
 CREATE TRIGGER after_update_rating
@@ -123,10 +126,13 @@ BEGIN
     DECLARE rating_count INT;
 
     SELECT ratingCount INTO rating_count FROM Recipe WHERE recipeID = NEW.recipeID;
+    SET @allow_trigger_update = TRUE;
 
     UPDATE Recipe
     SET averageRating = ((averageRating * rating_count - OLD.rating + NEW.rating) / rating_count)
     WHERE recipeID = NEW.recipeID;
+    
+    SET @allow_trigger_update = FALSE;
 END //
 
 CREATE TRIGGER after_delete_rating
@@ -141,6 +147,7 @@ BEGIN
     WHERE recipeID = OLD.recipeID;
 
     SELECT ratingCount INTO rating_count FROM Recipe WHERE recipeID = OLD.recipeID;
+    SET @allow_trigger_update = TRUE;
 
     IF rating_count = 0 THEN
         UPDATE Recipe
@@ -151,6 +158,20 @@ BEGIN
         SET averageRating = ((averageRating * (rating_count + 1) - OLD.rating) / rating_count)
         WHERE recipeID = OLD.recipeID;
     END IF;
+    SET @allow_trigger_update = FALSE;
 END //
+
+CREATE TRIGGER prevent_update_average_rating
+BEFORE UPDATE ON Recipe
+FOR EACH ROW
+BEGIN
+    IF @allow_trigger_update IS NULL THEN
+        SET @allow_trigger_update = FALSE
+    END IF;
+
+    IF @allow_trigger_update = FALSE AND NEW.averageRating <> OLD.averageRating THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Update to averageRating is not allowed';
+    END IF;
+END//
 
 DELIMITER ;
