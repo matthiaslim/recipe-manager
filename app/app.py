@@ -708,12 +708,18 @@ def get_replies(thread_id):
     db = get_db()
     cursor = db.cursor()
     try:
-        cursor.execute('SELECT replyText, created_by FROM Reply WHERE threadID = %s', (thread_id,))
+        cursor.execute('''
+            SELECT r.replyText, u.userName 
+            FROM Reply r
+            JOIN User u ON r.created_by = u.userID 
+            WHERE r.threadID = %s
+        ''', (thread_id,))
         replies = cursor.fetchall()
 
         return jsonify({
             'success': True,
-            'replies': [{'user': reply[0], 'reply': reply[1]} for reply in replies]
+            # Adjusted to use userName for 'user' key in the response
+            'replies': [{'user': reply[1], 'reply': reply[0]} for reply in replies]
         })
 
     except mysql.connector.Error as err:
