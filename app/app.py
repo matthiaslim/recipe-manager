@@ -822,22 +822,28 @@ def add_reply():
     reply_text = data.get('reply')
 
     # Assuming you have a user in the session
-    user = session.get('username', 'Anonymous')
     user_id = session.get('user_id')
 
     try:
-        if comment_index is not None and reply_text and user:
+        if comment_index is not None and reply_text and user_id:
             try:
+                # Fetch the username from the database using user_id
+                cursor.execute("SELECT userName FROM User WHERE userID = %s", (user_id,))
+                user_row = cursor.fetchone()
+                if user_row:
+                    username = user_row[0]
+                else:
+                    return jsonify({'success': False, 'error': 'User not found'}), 404
+
                 comment_index = int(comment_index)
                 thread_id = comments[comment_index]['threadID']
                 insert_query = "INSERT INTO Reply (threadID, replyText, created_by) VALUES (%s, %s, %s)"
                 cursor.execute(insert_query, (thread_id, reply_text, user_id))
                 db.commit()
-                # reply_id = cursor.lastrowid
 
-                # Insert reply into dictionary
+                # Insert reply into dictionary with the fetched username
                 new_reply = {
-                    'user': user_id,
+                    'user': username,  # Use the fetched username
                     'reply': reply_text
                 }
                 comments[comment_index]['replies'].append(new_reply)
