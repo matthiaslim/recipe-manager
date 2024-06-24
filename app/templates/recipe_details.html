@@ -27,6 +27,7 @@
                 data-target="#deleteRecipeModal"><i class="fa fa-trash"></i>
         </button>
     </div>
+
     <!-- Delete Recipe Modal -->
     <div class="modal fade" id="deleteRecipeModal" tabindex="-1" role="dialog"
          aria-labelledby="deleteRecipeModalLabel" aria-hidden="true" data-backdrop="false">
@@ -52,7 +53,7 @@
         </div>
     </div>
     {% endif %}
-
+    
     <div class="container-fluid mt-4">
         <div class="row">
             <div class="col-md-6">
@@ -87,7 +88,7 @@
                     <div class="card-body">
                         <p class="text-secondary mb-0">
                             Created by {{ recipe.username }}<br>
-                            {{ recipe.created_at }}
+                            {{ recipe.created_At }}
                         </p>
                     </div>
                 </div>
@@ -100,11 +101,45 @@
             <div class="col-md-6">
                 <a href="javascript:history.go(-1)" class="btn btn-secondary">Back</a>
                 {% if user_logged_in %}
-                <button type="button" class="btn btn-success"> Rate</button>
+                <button type="button" class="btn btn-success" data-toggle="modal" data-target="#rateRecipeModal"> Rate</button>
                 {% endif %}
             </div>
         </div>
     </div>
 </div>
 
+<!-- Rate Recipe Modal -->
+<div class="modal fade" id="rateRecipeModal" tabindex="-1" role="dialog" aria-labelledby="rateRecipeModalLabel" aria-hidden="true" data-backdrop="false">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="rateRecipeModalTitle">Rate Recipe</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="rateRecipeForm">
+                    <div class="form-group">
+                        <label for="rating">Rating (1-10):</label> <input type="range" class="form-control-range" id="rating" name="rating" min="1" max="10" step="1" value="5">
+                        <output for="rating" id="ratingOutput">5</output> <!-- to display the current value -->
+                    </div>
+                    
+                    <button type="button" class="btn btn-primary" id="submitRating">Submit Rating</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var ratingInput = document.getElementById('rating');
+        var output = document.getElementById('ratingOutput');
+
+        // Update the output value whenever the slider changes
+        ratingInput.addEventListener('input', function() {
+            output.textContent = this.value;
+        });
+    });
+</script>
 {% endblock %}
