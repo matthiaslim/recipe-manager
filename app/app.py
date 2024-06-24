@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask_paginate import Pagination, get_page_parameter
 import mysql.connector
 import os
 from bcrypt import hashpw, gensalt, checkpw
@@ -269,19 +270,29 @@ def get_recipes():
     cursor = db.cursor(dictionary=True)
 
     try:
-        db = get_db()
-        cursor = db.cursor(dictionary=True)
 
-        # Fetch recipes with creator's username
+        # Get current page number
+        page = request.args.get(get_page_parameter(), type=int, default=1)
+        per_page = 5  # Number of recipes per page
+        offset = (page - 1) * per_page
+
+        # Fetch total number of recipes
+        cursor.execute('SELECT COUNT(*) as total FROM Recipe')
+        total = cursor.fetchone()['total']
+
+        # Fetch recipes for the current page
         cursor.execute(
-            'SELECT Recipe.*, User.username AS username FROM Recipe JOIN User ON Recipe.created_by = User.userID')
+            'SELECT r.recipeID, r.recipeName, r.description, u.username '
+            'FROM Recipe r JOIN User u ON r.created_by = u.userID '
+            'LIMIT %s OFFSET %s',
+            (per_page, offset)
+        )
         recipes = cursor.fetchall()
 
-        # Fetch all ingredients
-        cursor.execute('SELECT * FROM Ingredient')
-        ingredients = cursor.fetchall()
+        # Create pagination object
+        pagination = Pagination(page=page, total=total, per_page=per_page, css_framework='bootstrap4')
 
-        return render_template('recipes.html', recipes=recipes, ingredients=ingredients)
+        return render_template('recipes.html', recipes=recipes, pagination=pagination)
 
     except mysql.connector.Error as err:
         flash(f"Database error: {err}", 'danger')
@@ -423,7 +434,7 @@ def my_recipes():
             search_term = request.args.get('search_term', '')
             page = request.args.get('page', 1, type=int)
 
-        per_page = 10  # Number of recipes per page
+        per_page = 5  # Number of recipes per page
         offset = (page - 1) * per_page
 
         # SQL query to fetch recipes with optional search filter
@@ -447,8 +458,12 @@ def my_recipes():
         # Calculate the total number of pages
         total_pages = (total_count + per_page - 1) // per_page
 
+        # Create pagination object
+        pagination = Pagination(page=page, total=total_count, per_page=per_page, search=search_term,
+                                css_framework='bootstrap4')
+
         return render_template('my_recipes.html', recipes=recipes, page=page, total_count=total_count,
-                               total_pages=total_pages, search_term=search_term)
+                               total_pages=total_pages, search_term=search_term, pagination=pagination)
 
     except (mysql.connector.Error, KeyError, TypeError) as err:
         flash(f"Database error: {err}", 'danger')

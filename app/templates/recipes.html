@@ -45,7 +45,8 @@
                 <div class="input-group mb-3">
                     <input id="searchRecipes" class="form-control" type="text" placeholder="Search Recipes..">
                     {% if user_logged_in %}
-                    <a class="btn btn-dark ml-1" href="{{url_for('create_recipe')}}"><i class="fas fa-plus"></i> Add Recipe
+                    <a class="btn btn-dark ml-1" href="{{url_for('create_recipe')}}"><i class="fas fa-plus"></i> Add
+                        Recipe
                     </a>
                     {% endif %}
                 </div>
@@ -77,6 +78,11 @@
             {% endfor %}
             </tbody>
         </table>
+
+        <!-- Pagination Controls -->
+        <div class="d-flex justify-content-center">
+            {{ pagination.links }}
+        </div>
     </div>
 
     <!-- Search By Ingredients Form -->
@@ -102,8 +108,9 @@
                     Ingredients Listed and More
                 </label>
             </div>
-
-            <button class="btn btn-dark mt-3" type="submit">Search</button>
+            <div class="form-group">
+                <button class="btn btn-dark mt-3" type="submit">Search</button>
+            </div>
         </form>
     </div>
 </div>
