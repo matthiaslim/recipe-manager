@@ -11,23 +11,25 @@
             <div class="col">
                 <div class="d-flex justify-content-center">
                     <form id="searchForm" class="form-inline" action="{{ url_for('get_recipes') }}" method="GET">
-                        <input id="searchRecipes" class="form-control" type="text" placeholder="Search Recipes.."
-                               name="search" value="{{ search_term }}">
+                        <input id="searchRecipes" list="previousSearches" class="form-control" type="text" placeholder="Search Recipes.." name="search" value="{{ search_term }}">
+                        {% if user_logged_in %}
+                        <datalist id="previousSearches">
+                            <!-- Options will be dynamically loaded here -->
+                        </datalist>
+                        {% endif %}
                         <button type="submit" class="btn btn-outline-success ml-2">Search</button>
                     </form>
                 </div>
             </div>
             <div class="col">
                 {% if user_logged_in %}
-                <a class="btn btn-dark ml-1" href="{{url_for('create_recipe')}}"><i class="fas fa-plus"></i> Add
-                    Recipe
-                </a>
+                <a class="btn btn-dark ml-1" href="{{url_for('create_recipe')}}"><i class="fas fa-plus"></i> Add Recipe</a>
                 {% endif %}
             </div>
         </div>
     </div>
 
-    <div class="container-fluid text-center">
+    <div class="container-fluid text-center" id="recipesContainer">
         <table id="recipeTable" class="table table-bordered table-hover">
             <thead class="thead-dark">
             <tr>
@@ -93,28 +95,63 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // Handle search input change event
-        document.getElementById('searchRecipes').addEventListener('submit', function (event) {
+        loadPreviousSearches();
+
+        // Handle search form submission
+        document.getElementById('searchForm').addEventListener('submit', function (event) {
             event.preventDefault();
-            searchRecipes();
+            const searchTerm = document.getElementById('searchRecipes').value.trim();
+            if (searchTerm) {
+                saveSearchTerm(searchTerm);
+                searchRecipes(searchTerm);
+            }
         });
 
         // Function to handle dynamic search
-        function searchRecipes() {
-            const searchForm = document.getElementById('searchForm');
-            const formData = new FormData(searchForm);
-
-            fetch(searchForm.action + '?' + new URLSearchParams(formData))
+        function searchRecipes(searchTerm) {
+            fetch('{{ url_for("get_recipes") }}?search=' + encodeURIComponent(searchTerm))
                 .then(response => response.text())
                 .then(html => {
-                    const recipesContainer = document.getElementById('recipesContainer');
-                    if (recipesContainer) {
-                        recipesContainer.innerHTML = html;
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newTableBody = doc.querySelector('#recipeTable tbody');
+                    const oldTableBody = document.querySelector('#recipeTable tbody');
+                    if (newTableBody && oldTableBody) {
+                        oldTableBody.innerHTML = newTableBody.innerHTML;
                     }
                 })
                 .catch(error => {
                     console.error('Error fetching search results:', error);
                 });
+        }
+
+        // Function to save the search term to local storage
+        function saveSearchTerm(term) {
+            let searches = JSON.parse(localStorage.getItem('previousSearches')) || [];
+            // Remove the term if it already exists to avoid duplicates
+            searches = searches.filter(search => search !== term);
+            // Add the term to the beginning of the array
+            searches.unshift(term);
+            // Keep only the last 10 searches
+            searches = searches.slice(0, 10);
+            // Save the updated searches back to local storage
+            localStorage.setItem('previousSearches', JSON.stringify(searches));
+            // Update the datalist with the new list of searches
+            loadPreviousSearches();
+        }
+
+        // Function to load previous searches from local storage
+        function loadPreviousSearches() {
+            const searches = JSON.parse(localStorage.getItem('previousSearches')) || [];
+            const datalist = document.getElementById('previousSearches');
+            // Clear existing options
+            datalist.innerHTML = '';
+            // Add an option for each previous search
+            searches.forEach(search => {
+                const option = document.createElement('option');
+                option.value = search;
+                datalist.appendChild(option);
+            });
         }
     });
 </script>
