@@ -1,36 +1,19 @@
+:root {
+    --primary-color: #FFFFFF; /* White */
+    --secondary-color: #7D7C7A; /* Grey */
+    --text-color: #171614; /* Night */
+}
+
 body {
-    background-color: #eeeeee;
-    font-family: Montserrat, 'sans-serif';
-    color: black;
+    background-color: var(--primary-color);
+    font-family: "Montserrat", 'sans-serif';
+    color: var(--text-color);
     width: 100%;
     overflow-x: hidden;
 }
 
-.grey-bg {
-    background-color: hsl(0, 0%, 97%);
-    padding: 24px;
-    text-align: center;
-}
-
-.button {
-    color: white;
-    background-color: black;
-    border: none;
-    text-align: center;
-    display: inline-block;
-    padding: 7px 12px;
-    margin: 4px 2px;
-    border-radius: 8px;
-}
-
 .active {
     font-weight: bold;
-}
-
-.container {
-    justify-content: center;
-    display: flex;
-    gap: 10px;
 }
 
 .center {
@@ -150,45 +133,6 @@ section {
     padding: 7px 12px;
     border-radius: 8px;
     margin: auto;
-}
-
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1;
-    /* padding-top: 30px; */
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgb(0, 0, 0);
-    background-color: rgba(0, 0, 0, 0.4);
-}
-
-.modal-content {
-    justify-content: center;
-    background-color: #fefefe;
-    margin: 5% auto;
-    padding: 20px;
-    border: 1px solid #888;
-    width: 70%;
-    max-width: 500px;
-    border-radius: 10px;
-}
-
-.close {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-}
-
-.close:hover,
-.close:focus {
-    color: black;
-    text-decoration: none;
-    cursor: pointer;
 }
 
 .reply-container {
