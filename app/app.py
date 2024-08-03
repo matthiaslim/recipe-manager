@@ -3,7 +3,6 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_paginate import Pagination, get_page_parameter
 import mysql.connector
-import redis
 import os
 from bcrypt import hashpw, gensalt, checkpw
 from db import get_db, get_redis
@@ -124,6 +123,7 @@ def favourites():
     finally:
         cursor.close()
         db.close()
+
 
 # Login
 @app.route('/login', methods=['GET', 'POST'])
@@ -488,6 +488,7 @@ def get_recipe_details(recipe_id):
         cursor.close()
         db.close()
 
+
 @app.route('/save_favorite', methods=['POST'])
 @login_required
 def save_favorite():
@@ -505,6 +506,7 @@ def save_favorite():
         return jsonify({'success': True, 'message': 'Recipe added to favorites'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
+
 
 @app.route('/my_favourites')
 @login_required
@@ -534,6 +536,7 @@ def my_favourites():
     except Exception as e:
         flash(f'Error fetching favorite recipes: {str(e)}', 'danger')
         return redirect(url_for('index'))
+
 
 # My Recipes Page
 @app.route('/my_recipes', methods=['GET', 'POST'])
@@ -591,177 +594,111 @@ def my_recipes():
         db.close()
 
 
-# Create Recipe
-@app.route('/recipes/create', methods=['GET', 'POST'])
+# Add Recipe
+@app.route('/add_recipe', methods=['GET', 'POST'])
 @login_required
-def create_recipe():
-    db = get_db()
-    cursor = db.cursor()
-
+def add_recipe():
     if request.method == 'POST':
-        try:
-            recipe_name = request.form['recipe_name']
-            description = request.form['description']
-            created_by = session['user_id']
+        # Handle form submission to add a new recipe
+        recipe_name = request.form.get('recipe_name')
+        description = request.form.get('description')
+        directions = request.form.getlist('directions[]')
+        ingredients = request.form.getlist('ingredients[]')
+        quantities = request.form.getlist('quantities[]')
+        units = request.form.getlist('units[]')
+        user_id = session.get('user_id')
 
-            # Insert recipe
-            cursor.execute(
-                'INSERT INTO Recipe (recipeName, description, created_by) VALUES (%s, %s, %s)',
-                (recipe_name, description, created_by)
-            )
+        db = get_db()
+        cursor = db.cursor()
+        try:
+            # Insert new recipe
+            cursor.execute("INSERT INTO Recipe (recipeName, description, created_by) VALUES (%s, %s, %s)",
+                           (recipe_name, description, user_id))
             recipe_id = cursor.lastrowid
 
             # Insert directions
-            directions = request.form.getlist('directions[]')
-            for order, direction in enumerate(directions, start=1):
+            for i, direction in enumerate(directions):
                 cursor.execute(
-                    'INSERT INTO Recipe_Direction (recipeID, instructionOrder, instruction) VALUES (%s, %s, %s)',
-                    (recipe_id, order, direction)
-                )
+                    "INSERT INTO Recipe_Direction (recipeID, instructionOrder, instruction) VALUES (%s, %s, %s)",
+                    (recipe_id, i + 1, direction))
 
             # Insert ingredients
-            ingredients = request.form.getlist('ingredients[]')
-            quantities = request.form.getlist('quantities[]')
-            units = request.form.getlist('units[]')
-
             for ingredient, quantity, unit in zip(ingredients, quantities, units):
-                # Check if ingredient already exists
                 cursor.execute(
-                    'SELECT ingredientID FROM Ingredient WHERE LOWER(ingredientName) = %s',
-                    (ingredient.strip().lower(),)
-                )
-                existing_ingredient = cursor.fetchone()
-
-                if existing_ingredient:
-                    ingredient_id = existing_ingredient[0]
-                else:
-                    # Insert new ingredient
-                    cursor.execute(
-                        'INSERT INTO Ingredient (ingredientName) VALUES (%s)',
-                        (ingredient,)
-                    )
-                    ingredient_id = cursor.lastrowid
-
-                # Insert into Recipe_Ingredient table
+                    "INSERT INTO Ingredient (ingredientName) VALUES (%s) ON DUPLICATE KEY UPDATE ingredientID=LAST_INSERT_ID(ingredientID)",
+                    (ingredient,))
+                ingredient_id = cursor.lastrowid
                 cursor.execute(
-                    'INSERT INTO Recipe_Ingredient (recipeID, ingredientID, quantity, unit) VALUES (%s, %s, %s, %s)',
-                    (recipe_id, ingredient_id, quantity, unit)
-                )
+                    "INSERT INTO Recipe_Ingredient (recipeID, ingredientID, quantity, unit) VALUES (%s, %s, %s, %s)",
+                    (recipe_id, ingredient_id, quantity, unit))
 
             db.commit()
-
-            flash('Recipe created successfully!', 'success')
-            return redirect(url_for('get_recipes'))  # Redirect to a page where recipes are listed
-
+            flash('Recipe added successfully!', 'success')
+            return redirect(url_for('get_recipes'))
         except mysql.connector.Error as err:
             db.rollback()
-            flash(f"Error creating recipe: {err}", 'danger')
-            return redirect(url_for('create_recipe'))
-
+            flash(f"Database error: {err}", 'danger')
         finally:
             cursor.close()
             db.close()
 
-    # Render the form if it's a GET request or if there was an error
-    return render_template('recipes/add_recipe.html')
+    return render_template('recipes/edit_recipe.html', recipe=None, directions=[], ingredients=[])
 
 
-@app.route('/my_recipes/edit/<int:recipe_id>', methods=['GET', 'POST'])
+@app.route('/edit_recipe/<int:recipe_id>', methods=['GET', 'POST'])
 @login_required
 def edit_recipe(recipe_id):
     db = get_db()
     cursor = db.cursor(dictionary=True)
-
-    # Check if the user is the creator of the recipe
-    cursor.execute('SELECT created_by FROM Recipe WHERE recipeID = %s', (recipe_id,))
-    recipe = cursor.fetchone()
-    if not recipe or recipe['created_by'] != session['user_id']:
-        flash('You are not authorized to edit this recipe.', 'danger')
-        return redirect(url_for('my_recipes'))
-
     try:
         if request.method == 'POST':
-            # Handle form submission to update recipe
-            recipe_name = request.form['recipe_name']
-            description = request.form['description']
+            # Handle form submission to edit the recipe
+            recipe_name = request.form.get('recipe_name')
+            description = request.form.get('description')
             directions = request.form.getlist('directions[]')
             ingredients = request.form.getlist('ingredients[]')
             quantities = request.form.getlist('quantities[]')
             units = request.form.getlist('units[]')
 
-            # Update recipe details in Recipe table
-            cursor.execute(
-                'UPDATE Recipe SET recipeName=%s, description=%s WHERE recipeID=%s',
-                (recipe_name, description, recipe_id)
-            )
+            # Update recipe
+            cursor.execute("UPDATE Recipe SET recipeName = %s, description = %s WHERE recipeID = %s",
+                           (recipe_name, description, recipe_id))
 
-            # Delete old directions for the recipe
-            cursor.execute('DELETE FROM Recipe_Direction WHERE recipeID = %s', (recipe_id,))
-
-            # Insert new directions into Recipe_Direction table
+            # Update directions
+            cursor.execute("DELETE FROM Recipe_Direction WHERE recipeID = %s", (recipe_id,))
             for i, direction in enumerate(directions):
                 cursor.execute(
-                    'INSERT INTO Recipe_Direction (recipeID, instructionOrder, instruction) VALUES (%s, %s, %s)',
-                    (recipe_id, i + 1, direction)
-                )
+                    "INSERT INTO Recipe_Direction (recipeID, instructionOrder, instruction) VALUES (%s, %s, %s)",
+                    (recipe_id, i + 1, direction))
 
-            # Delete old ingredients for the recipe
-            cursor.execute('DELETE FROM Recipe_Ingredient WHERE recipeID = %s', (recipe_id,))
-
-            # Insert or update Recipe_Ingredient entries
-            for i in range(len(ingredients)):
-                ingredient_name = ingredients[i]
-                quantity = quantities[i]
-                unit = units[i]
-
-                # Check if ingredientName exists in Ingredient table
+            # Update ingredients
+            cursor.execute("DELETE FROM Recipe_Ingredient WHERE recipeID = %s", (recipe_id,))
+            for ingredient, quantity, unit in zip(ingredients, quantities, units):
                 cursor.execute(
-                    'SELECT ingredientID FROM Ingredient WHERE LOWER(ingredientName) = %s',
-                    (ingredient_name.strip().lower(),)
-                )
-                existing_ingredient = cursor.fetchone()
-
-                if existing_ingredient:
-                    # If ingredient exists, use its ingredientID
-                    ingredient_id = existing_ingredient['ingredientID']
-                else:
-                    # If ingredient does not exist, insert it into Ingredient table
-                    cursor.execute(
-                        'INSERT INTO Ingredient (ingredientName) VALUES (%s)',
-                        (ingredient_name,)
-                    )
-                    db.commit()
-                    ingredient_id = cursor.lastrowid  # Get the last inserted ID
-
-                # Insert into Recipe_Ingredient table
+                    "INSERT INTO Ingredient (ingredientName) VALUES (%s) ON DUPLICATE KEY UPDATE ingredientID=LAST_INSERT_ID(ingredientID)",
+                    (ingredient,))
+                ingredient_id = cursor.lastrowid
                 cursor.execute(
-                    'INSERT INTO Recipe_Ingredient (recipeID, ingredientID, quantity, unit) VALUES (%s, %s, %s, %s)',
-                    (recipe_id, ingredient_id, quantity, unit)
-                )
+                    "INSERT INTO Recipe_Ingredient (recipeID, ingredientID, quantity, unit) VALUES (%s, %s, %s, %s)",
+                    (recipe_id, ingredient_id, quantity, unit))
 
             db.commit()
             flash('Recipe updated successfully!', 'success')
-            return redirect(url_for('my_recipes'))
-
+            return redirect(url_for('get_recipes'))
         else:
-            # Fetch current recipe details for the form
-            cursor.execute('SELECT * FROM Recipe WHERE recipeID = %s', (recipe_id,))
+            # Load recipe details for editing
+            cursor.execute("SELECT * FROM Recipe WHERE recipeID = %s", (recipe_id,))
             recipe = cursor.fetchone()
 
-            cursor.execute('''
-                SELECT instructionOrder, instruction
-                FROM Recipe_Direction
-                WHERE recipeID = %s
-                ORDER BY instructionOrder
-            ''', (recipe_id,))
+            cursor.execute("SELECT * FROM Recipe_Direction WHERE recipeID = %s ORDER BY instructionOrder", (recipe_id,))
             directions = cursor.fetchall()
 
-            cursor.execute('''
-                SELECT ri.quantity, ri.unit, i.ingredientName
+            cursor.execute("""
+                SELECT i.ingredientName, ri.quantity, ri.unit
                 FROM Recipe_Ingredient ri
-                INNER JOIN Ingredient i ON ri.ingredientID = i.ingredientID
+                JOIN Ingredient i ON ri.ingredientID = i.ingredientID
                 WHERE ri.recipeID = %s
-            ''', (recipe_id,))
+            """, (recipe_id,))
             ingredients = cursor.fetchall()
 
             return render_template('recipes/edit_recipe.html', recipe=recipe, directions=directions,
@@ -769,7 +706,7 @@ def edit_recipe(recipe_id):
 
     except mysql.connector.Error as err:
         flash(f"Database error: {err}", 'danger')
-        return redirect(url_for('my_recipes'))
+        return redirect(url_for('get_recipes'))
 
     finally:
         cursor.close()
@@ -814,16 +751,16 @@ def delete_recipe(recipe_id):
 
 
 # Community
-@login_required
 @app.route('/community')
+@login_required
 def community():
     global comments
     comments = get_threads_with_replies()
     return render_template('community.html', comments=comments)
 
 
-@login_required
 @app.route('/get_replies/<int:thread_id>', methods=['GET'])
+@login_required
 def get_replies(thread_id):
     db = get_db()
     cursor = db.cursor()
@@ -851,8 +788,8 @@ def get_replies(thread_id):
         cursor.close()
 
 
-@login_required
 @app.route('/add_comment', methods=['POST'])
+@login_required
 def add_comment():
     db = get_db()
     cursor = db.cursor()
@@ -902,8 +839,8 @@ def add_comment():
         cursor.close()
 
 
-@login_required
 @app.route('/add_reply', methods=['POST'])
+@login_required
 def add_reply():
     db = get_db()
     cursor = db.cursor()

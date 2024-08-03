@@ -1,34 +1,47 @@
 {% extends "shared/layout.html" %}
 
-{% block title %}Edit Recipe{% endblock %}
+{% block title %}
+{% if recipe and recipe.recipeID %}
+Edit Recipe
+{% else %}
+Add Recipe
+{% endif %}
+{% endblock %}
 
 {% block content %}
 
-<div class="container-fluid" style="width: 60%">
-    <h1>Edit Recipe</h1>
-    <form method="POST" action="{{ url_for('edit_recipe', recipe_id=recipe.recipeID) }}">
-        <div class="form-group">
-            <label for="recipeName">Recipe Name</label>
-            <input type="text" class="form-control" id="recipeName" name="recipe_name" value="{{ recipe.recipeName }}"
-                   required>
+<div class="container-fluid" style="width: 80%">
+    <h1>
+        {% if recipe and recipe.recipeID %}
+        Edit Recipe
+        {% else %}
+        Add Recipe
+        {% endif %}
+    </h1>
+
+    <form method="POST"
+          action="{% if recipe and recipe.recipeID %}{{ url_for('edit_recipe', recipe_id=recipe.recipeID) }}{% else %}{{ url_for('add_recipe') }}{% endif %}">
+        <div class="mb-3">
+            <label for="recipeName" class="form-label">Recipe Name</label>
+            <input type="text" class="form-control" id="recipeName" name="recipe_name"
+                   value="{{ recipe.recipeName if recipe else '' }}" required>
         </div>
-        <div class="form-group">
-            <label for="description">Description</label>
-            <textarea class="form-control" id="description" name="description">{{ recipe.description }}</textarea>
+        <div class="mb-3">
+            <label for="description" class="form-label">Description</label>
+            <textarea class="form-control" id="description" name="description">{{ recipe.description if recipe else '' }}</textarea>
         </div>
         <div id="directionsContainer">
-            <label for="directions">Steps</label>
+            <label for="directions" class="form-label">Steps</label>
             {% for direction in directions %}
-            <div class="form-group direction">
+            <div class="mb-3 direction">
                 <div class="input-group">
-                    <div class="input-group-prepend">
-                        <span class="input-group-text step-number">{{ loop.index }}</span>
+                    <div class="input-group-text">
+                        <span class="step-number">{{ loop.index }}</span>
                     </div>
-                    <input type="text" class="form-control step-input" name="directions[]" value="{{ direction.instruction }}"
-                           required>
-                    <div class="input-group-append">
-                        <button type="button" class="btn btn-danger btn-sm removeDirection"><i class="fas fa-trash"></i></button>
-                    </div>
+                    <input type="text" class="form-control step-input" name="directions[]"
+                           value="{{ direction.instruction }}" required>
+                    <button type="button" class="btn btn-danger btn-sm removeDirection"><i class="fas fa-trash"></i>
+                    </button>
                 </div>
             </div>
             {% endfor %}
@@ -36,31 +49,40 @@
         <button type="button" class="btn btn-secondary mb-3" id="addDirection">Add Step</button>
         <div class="container-md" id="ingredientsContainer">
             {% for ingredient in ingredients %}
-            <div class="form-row mb-3 ingredient">
-                <div class="form-group col-md-6">
-                    <label>Ingredient</label>
-                    <input type="text" class="form-control" name="ingredients[]" value="{{ ingredient.ingredientName }}"
-                           required>
-                </div>
-                <div class="form-group col-md-1">
-                    <label>Quantity</label>
-                    <input type="number" class="form-control" name="quantities[]" value="{{ ingredient.quantity }}"
-                           required>
-                </div>
-                <div class="form-group col-md-4">
-                    <label>Unit</label>
-                    <input type="text" class="form-control" name="units[]" value="{{ ingredient.unit }}" required>
-                </div>
-                <div class="form-group col-md-1">
-                    <label style="visibility: hidden">Remove</label>
-                    <button type="button" class="btn btn-danger btn-sm removeIngredient"><i class="fas fa-trash"></i></button>
+            <div class="ingredient">
+                <div class="row mb-3">
+                    <label class="col-sm-2 col-form-label">Ingredient</label>
+                    <div class="col-sm-3">
+                        <input type="text" class="form-control" name="ingredients[]"
+                               value="{{ ingredient.ingredientName }}" required>
+                    </div>
+                    <label class="col-sm-1 col-form-label">Quantity</label>
+                    <div class="col-sm-2">
+                        <input type="number" class="form-control" name="quantities[]" value="{{ ingredient.quantity }}"
+                               required>
+                    </div>
+                    <label class="col-sm-1 form-label">Unit</label>
+                    <div class="col-sm-2">
+                        <input type="text" class="form-control" name="units[]" value="{{ ingredient.unit }}" required>
+                    </div>
+                    <div class="col-sm-1">
+                        <button type="button" class="btn btn-danger removeIngredient"><i
+                                class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
             {% endfor %}
         </div>
         <button type="button" class="btn btn-secondary mb-3" id="addIngredient">Add Ingredient</button>
-        <div class="form-group">
-            <button type="submit" class="btn btn-primary">Save changes</button>
+        <div class="mb-3">
+            <button type="submit" class="btn btn-primary">
+                {% if recipe and recipe.recipeID %}
+                Save changes
+                {% else %}
+                Add Recipe
+                {% endif %}
+            </button>
             <a href="javascript:history.go(-1)" class="btn btn-secondary">Cancel</a>
         </div>
     </form>
@@ -74,38 +96,21 @@
     document.getElementById('addDirection').addEventListener('click', function () {
         let container = document.getElementById('directionsContainer');
         let div = document.createElement('div');
-        div.className = 'form-group direction';
-        let inputGroup = document.createElement('div');
-        inputGroup.className = 'input-group';
-        let stepNumber = container.querySelectorAll('.step-number').length + 1; // Get next step number
-        let prependDiv = document.createElement('div');
-        prependDiv.className = 'input-group-prepend';
-        let span = document.createElement('span');
-        span.className = 'input-group-text step-number';
-        span.textContent = stepNumber;
-        prependDiv.appendChild(span);
-        inputGroup.appendChild(prependDiv);
-        let input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'form-control step-input';
-        input.name = 'directions[]';
-        input.placeholder = 'Enter step';
-        inputGroup.appendChild(input);
-        let appendDiv = document.createElement('div');
-        appendDiv.className = 'input-group-append';
-        let removeButton = document.createElement('button');
-        removeButton.type = 'button';
-        removeButton.className = 'btn btn-danger btn-sm removeDirection';
-        removeButton.innerHTML = '<i class="fas fa-trash"></i>';
-        removeButton.addEventListener('click', function () {
-            div.remove();
-            updateStepNumbers(); // Update step numbers after removal
-        });
-        appendDiv.appendChild(removeButton);
-        inputGroup.appendChild(appendDiv);
-        div.appendChild(inputGroup);
+        div.className = 'mb-3 direction'; // Match the existing class for margins
+        div.innerHTML = `
+        <div class="input-group">
+            <div class="input-group-text">
+                <span class="step-number">${container.querySelectorAll('.step-number').length + 1}</span>
+            </div>
+            <input type="text" class="form-control step-input" name="directions[]" placeholder="Enter step" required>
+            <button type="button" class="btn btn-danger btn-sm removeDirection">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
         container.appendChild(div);
     });
+
 
     // Function to update step numbers
     function updateStepNumbers() {
@@ -119,66 +124,26 @@
     document.getElementById('addIngredient').addEventListener('click', function () {
         let container = document.getElementById('ingredientsContainer');
         let div = document.createElement('div');
-        div.className = 'form-row mb-3 ingredient';
-        let ingredientNameDiv = document.createElement('div');
-        ingredientNameDiv.className = 'form-group col-md-6';
-        let ingredientNameLabel = document.createElement('label');
-        ingredientNameLabel.setAttribute('for', 'ingredientName');
-        ingredientNameLabel.textContent = 'Ingredient';
-        let ingredientNameInput = document.createElement('input');
-        ingredientNameInput.type = 'text';
-        ingredientNameInput.className = 'form-control';
-        ingredientNameInput.name = 'ingredients[]';
-        ingredientNameInput.setAttribute('placeholder', 'Enter ingredient');
-        ingredientNameDiv.appendChild(ingredientNameLabel);
-        ingredientNameDiv.appendChild(ingredientNameInput);
-
-        let ingredientQtyDiv = document.createElement('div');
-        ingredientQtyDiv.className = 'form-group col-md-1';
-        let ingredientQtyLabel = document.createElement('label');
-        ingredientQtyLabel.setAttribute('for', 'ingredientQty');
-        ingredientQtyLabel.textContent = 'Quantity';
-        let ingredientQtyInput = document.createElement('input');
-        ingredientQtyInput.type = 'number';
-        ingredientQtyInput.className = 'form-control';
-        ingredientQtyInput.name = 'quantities[]';
-        ingredientQtyDiv.appendChild(ingredientQtyLabel);
-        ingredientQtyDiv.appendChild(ingredientQtyInput);
-
-        let ingredientUnitDiv = document.createElement('div');
-        ingredientUnitDiv.className = 'form-group col-md-4';
-        let ingredientUnitLabel = document.createElement('label');
-        ingredientUnitLabel.setAttribute('for', 'ingredientUnit');
-        ingredientUnitLabel.textContent = 'Unit';
-        let ingredientUnitInput = document.createElement('input');
-        ingredientUnitInput.type = 'text';
-        ingredientUnitInput.className = 'form-control';
-        ingredientUnitInput.name = 'units[]';
-        ingredientUnitInput.setAttribute('placeholder', 'Enter unit');
-        ingredientUnitDiv.appendChild(ingredientUnitLabel);
-        ingredientUnitDiv.appendChild(ingredientUnitInput);
-
-        // Remove Button
-        let removeIngredientDiv = document.createElement('div');
-        removeIngredientDiv.className = 'form-group col-md-1';
-        let removeLabel = document.createElement('label');
-        removeLabel.textContent = 'Remove';
-        removeLabel.style.visibility = 'hidden'; // Hide the label text visually
-        let removeButton = document.createElement('button');
-        removeButton.type = 'button';
-        removeButton.className = 'btn btn-danger btn-sm removeIngredient';
-        removeButton.innerHTML = '<i class="fas fa-trash"></i>';
-        removeButton.addEventListener('click', function () {
-            div.remove();
-        });
-        removeIngredientDiv.appendChild(removeLabel);
-        removeIngredientDiv.appendChild(removeButton);
-
-        div.appendChild(ingredientNameDiv);
-        div.appendChild(ingredientQtyDiv);
-        div.appendChild(ingredientUnitDiv);
-        div.appendChild(removeIngredientDiv);
-
+        div.className = 'ingredient';
+        div.innerHTML = `
+        <div class="row mb-3">
+            <label class="col-sm-2 col-form-label">Ingredient</label>
+            <div class="col-sm-3">
+                <input type="text" class="form-control" name="ingredients[]" required>
+            </div>
+            <label class="col-sm-1 col-form-label">Quantity</label>
+            <div class="col-sm-2">
+                <input type="number" class="form-control" name="quantities[]" required>
+            </div>
+            <label class="col-sm-1 form-label">Unit</label>
+            <div class="col-sm-2">
+                <input type="text" class="form-control" name="units[]" required>
+            </div>
+            <div class="col-sm-1">
+                <button type="button" class="btn btn-danger removeIngredient"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    `;
         container.appendChild(div);
     });
 
