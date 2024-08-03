@@ -498,6 +498,9 @@ def get_recipe_details(recipe_id):
 @app.route('/save_favourite', methods=['POST'])
 @login_required
 def save_favourite():
+    if request.content_type != 'application/json':
+        return jsonify({'success': False, 'message': 'Content-Type must be application/json'}), 400
+    
     user_id = session.get('user_id')
     data = request.get_json()
     recipe_id = data.get('recipe_id')
@@ -507,9 +510,15 @@ def save_favourite():
 
     try:
         redis_db = get_redis()
-        # Use a Redis set to store favourite recipes for each user
-        redis_db.sadd(f'user:{user_id}:favourites', recipe_id)
-        return jsonify({'success': True, 'message': 'Recipe added to favourites'})
+        # Check if the recipe is already favorited
+        if redis_db.sismember(f'user:{user_id}:favourites', recipe_id):
+            # If already favorited, remove it
+            redis_db.srem(f'user:{user_id}:favourites', recipe_id)
+            return jsonify({'success': True, 'message': 'Recipe removed from favourites'})
+        else:
+            # If not favorited, add it
+            redis_db.sadd(f'user:{user_id}:favourites', recipe_id)
+            return jsonify({'success': True, 'message': 'Recipe added to favourites'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
@@ -520,6 +529,8 @@ def my_favourites():
     db = get_db()
     cursor = db.cursor(dictionary=True)
     user_id = session.get('user_id')
+    if not user_id:
+        flash('You need to be logged in to view your favourite recipes!', 'danger')
 
     try:
         redis_db = get_redis()
