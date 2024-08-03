@@ -514,10 +514,12 @@ def save_favourite():
         if redis_db.sismember(f'user:{user_id}:favourites', recipe_id):
             # If already favorited, remove it
             redis_db.srem(f'user:{user_id}:favourites', recipe_id)
+            flash('Recipe removed from favourites!', 'success')
             return jsonify({'success': True, 'message': 'Recipe removed from favourites'})
         else:
             # If not favorited, add it
             redis_db.sadd(f'user:{user_id}:favourites', recipe_id)
+            flash('Recipe added to favourites!', 'success')
             return jsonify({'success': True, 'message': 'Recipe added to favourites'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
