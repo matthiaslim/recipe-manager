@@ -1,4 +1,5 @@
 import mysql.connector
+from pymongo import MongoClient
 from flask import current_app, g
 from flask.cli import with_appcontext
 import click
@@ -49,6 +50,17 @@ def init_db():
 def init_db_command():
     init_db()
     click.echo('Initialized the database.')
+
+def get_mongo_db():
+    if 'mongo_db' not in g:
+        g.mongo_client = MongoClient(current_app.config['MONGO_URI'])
+        g.mongo_db = g.mongo_client[current_app.config['MONGO_DB']]
+    return g.mongo_db
+
+def close_mongo_db(e=None):
+    mongo_client = g.pop('mongo_client', None)
+    if mongo_client is not None:
+        mongo_client.close()
 
 
 def init_app(app):

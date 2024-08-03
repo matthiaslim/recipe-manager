@@ -5,17 +5,14 @@ from flask_paginate import Pagination, get_page_parameter
 import mysql.connector
 import os
 from bcrypt import hashpw, gensalt, checkpw
-from db import get_db, get_redis
+from db import get_db, get_redis, get_mongo_db
 from config import Config
 from functools import wraps
+from bson import ObjectId
 
 app = Flask(__name__)
 app.config.from_object(Config)  # Load configuration from config.py
 app.secret_key = os.urandom(24)  # secret key for session management
-
-# Dummy data for community comments
-comments = []
-
 
 def login_required(f):
     @wraps(f)
@@ -29,39 +26,64 @@ def login_required(f):
 
 
 def get_threads_with_replies(search_query=None):
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
+    db = get_mongo_db()
     try:
         if search_query:
-            cursor.execute(
-                'SELECT t.threadID, t.threadName, u.userName, t.reply_count FROM temp_thread_with_replies t INNER JOIN User u ON t.thread_created_by = u.userID WHERE t.threadName LIKE %s',
-                ('%' + search_query + '%',))
+            threads = db.thread.find({'threadName': {'$regex': search_query, '$options': 'i'}})
         else:
-            cursor.execute(
-                'SELECT t.threadID, t.threadName, u.userName, t.reply_count FROM temp_thread_with_replies t INNER JOIN User u ON t.thread_created_by = u.userID')
-        fetched_comments = cursor.fetchall()
-        comments_list = []
-        for comment in fetched_comments:
-            comment_dict = {
-                'threadID': comment['threadID'],
-                'threadName': comment['threadName'],
-                'created_by': comment.get('userName', 'Unknown'),  # Corrected from 'username' to 'userName'
-                'count': comment.get('reply_count', 0),
-                'replies': []
+            threads = db.thread.find()
+
+        comment_list = []
+        for thread in threads:
+            comment = {
+                'threadID': str(thread['_id']),
+                'threadName': thread['threadName'],
+                'created_by': thread['created_by'],
+                'created_by_username': thread['created_by_username'],
+                'replies': thread['replies'],
+                'count': len(thread['replies'])
             }
-            comments_list.append(comment_dict)
-
-        return comments_list
-
-    except mysql.connector.Error as err:
+            comment_list.append(comment)
+        return comment_list
+    except Exception as e:
         return jsonify({
             'success': False,
-            'error': f"Error fetching comments from database: {err}"
+            'error': f"Error fetching comments from database: {e}"
         }), 500
 
-    finally:
-        cursor.close()
-        db.close()
+    # db = get_db()
+    # cursor = db.cursor(dictionary=True)
+    # try:
+    #     if search_query:
+    #         cursor.execute(
+    #             'SELECT t.threadID, t.threadName, u.userName, t.reply_count FROM temp_thread_with_replies t INNER JOIN User u ON t.thread_created_by = u.userID WHERE t.threadName LIKE %s',
+    #             ('%' + search_query + '%',))
+    #     else:
+    #         cursor.execute(
+    #             'SELECT t.threadID, t.threadName, u.userName, t.reply_count FROM temp_thread_with_replies t INNER JOIN User u ON t.thread_created_by = u.userID')
+    #     fetched_comments = cursor.fetchall()
+    #     comments_list = []
+    #     for comment in fetched_comments:
+    #         comment_dict = {
+    #             'threadID': comment['threadID'],
+    #             'threadName': comment['threadName'],
+    #             'created_by': comment.get('userName', 'Unknown'),  # Corrected from 'username' to 'userName'
+    #             'count': comment.get('reply_count', 0),
+    #             'replies': []
+    #         }
+    #         comments_list.append(comment_dict)
+
+    #     return comments_list
+
+    # except mysql.connector.Error as err:
+    #     return jsonify({
+    #         'success': False,
+    #         'error': f"Error fetching comments from database: {err}"
+    #     }), 500
+
+    # finally:
+    #     cursor.close()
+    #     db.close()
 
 
 # Context processor to inject `user_logged_in` and `username` into templates
@@ -785,153 +807,227 @@ def delete_recipe(recipe_id):
 @app.route('/community')
 @login_required
 def community():
-    global comments
+    if not 'user_id' in session:
+        return redirect(url_for('login'))
     comments = get_threads_with_replies()
     return render_template('community.html', comments=comments)
 
 
-@app.route('/get_replies/<int:thread_id>', methods=['GET'])
 @login_required
+@app.route('/get_replies/<int:thread_id>', methods=['GET'])
 def get_replies(thread_id):
-    db = get_db()
-    cursor = db.cursor()
+    db = get_mongo_db()
     try:
-        cursor.execute('''
-            SELECT u.userName, r.replyText 
-            FROM Reply r
-            JOIN User u ON r.created_by = u.userID 
-            WHERE r.threadID = %s
-        ''', (thread_id,))
-        replies = cursor.fetchall()
-
+        replies = db.thread.find_one({'_id': ObjectId(thread_id)}, {'replies': 1})
         return jsonify({
             'success': True,
-            'replies': [{'user': reply[0], 'reply': reply[1]} for reply in replies]
+            'replies': replies['replies']
         })
-
-    except mysql.connector.Error as err:
+    except Exception as e:
         return jsonify({
             'success': False,
-            'error': f"Error fetching replies from database: {err}"
+            'error': f"Error fetching replies from database: {e}"
         }), 500
+    # db = get_db()
+    # cursor = db.cursor()
+    # try:
+    #     cursor.execute('''
+    #         SELECT u.userName, r.replyText 
+    #         FROM Reply r
+    #         JOIN User u ON r.created_by = u.userID 
+    #         WHERE r.threadID = %s
+    #     ''', (thread_id,))
+    #     replies = cursor.fetchall()
 
-    finally:
-        cursor.close()
+    #     return jsonify({
+    #         'success': True,
+    #         'replies': [{'user': reply[0], 'reply': reply[1]} for reply in replies]
+    #     })
+
+    # except mysql.connector.Error as err:
+    #     return jsonify({
+    #         'success': False,
+    #         'error': f"Error fetching replies from database: {err}"
+    #     }), 500
+
+    # finally:
+    #     cursor.close()
 
 
 @app.route('/add_comment', methods=['POST'])
 @login_required
 def add_comment():
-    db = get_db()
-    cursor = db.cursor()
+    if not 'user_id' in session:
+        return jsonify({'success': False, 'error': 'You need to be logged in to comment'}), 401
+    
+    db = get_mongo_db()
 
-    global comments
     data = request.get_json()
     comment_text = data.get('comment')
 
-    # Assuming you have a user in the session
-    user = session.get('username', 'Anonymous')
-    user_id = session.get('user_id')
-
     try:
-        if comment_text and user:
-            # Insert thread into Thread table
-            insert_query = "INSERT INTO Thread (threadName, created_by) VALUES (%s, %s)"
-            cursor.execute(insert_query, (comment_text, user_id))
-            db.commit()
-
-            thread_id = cursor.lastrowid
-
-            new_comment = {
-                'threadID': thread_id,
+        if comment_text:
+            # Insert comment into Thread table
+            db.thread.insert_one({
                 'threadName': comment_text,
-                'created_by': user_id,
-                'count': 0,
-                'replies': []
-            }
-            comments.append(new_comment)
+                'created_by': session.get('user_id'),
+                'created_by_username': session.get('username'),
+                'replies': [],
+            })
 
             return jsonify({
                 'success': True,
-                'comment': new_comment
             })
         else:
             return jsonify({
                 'success': False,
                 'error': 'Invalid data'
             }), 400
-    except mysql.connector.Error as err:
+    except Exception as e:
         return jsonify({
             'success': False,
-            'error': f"Error inserting into database: {err}"
+            'error': f"Error inserting into database: {e}"
         }), 500
 
-    finally:
-        cursor.close()
+    # db = get_db()
+    # cursor = db.cursor()
+
+    # data = request.get_json()
+    # comment_text = data.get('comment')
+
+    # # Assuming you have a user in the session
+    # user = session.get('username', 'Anonymous')
+    # user_id = session.get('user_id')
+
+    # try:
+    #     if comment_text and user:
+    #         # Insert thread into Thread table
+    #         insert_query = "INSERT INTO Thread (threadName, created_by) VALUES (%s, %s)"
+    #         cursor.execute(insert_query, (comment_text, user_id))
+    #         db.commit()
+
+    #         thread_id = cursor.lastrowid
+
+    #         new_comment = {
+    #             'threadID': thread_id,
+    #             'threadName': comment_text,
+    #             'created_by': user_id,
+    #             'count': 0,
+    #             'replies': []
+    #         }
+    #         comments.append(new_comment)
+
+    #         return jsonify({
+    #             'success': True,
+    #             'comment': new_comment
+    #         })
+    #     else:
+    #         return jsonify({
+    #             'success': False,
+    #             'error': 'Invalid data'
+    #         }), 400
+    # except mysql.connector.Error as err:
+    #     return jsonify({
+    #         'success': False,
+    #         'error': f"Error inserting into database: {err}"
+    #     }), 500
+
+    # finally:
+    #     cursor.close()
 
 
 @app.route('/add_reply', methods=['POST'])
 @login_required
 def add_reply():
-    db = get_db()
-    cursor = db.cursor()
+    if not 'user_id' in session:
+        return jsonify({'success': False, 'error': 'You need to be logged in to reply'}), 401
+    
+    db = get_mongo_db()
 
-    global comments
     data = request.get_json()
     comment_index = data.get('comment_index')
     reply_text = data.get('reply')
-
-    # Assuming you have a user in the session
     user_id = session.get('user_id')
 
     try:
         if comment_index is not None and reply_text and user_id:
-            try:
-                # Fetch the username from the database using user_id
-                cursor.execute("SELECT userName FROM User WHERE userID = %s", (user_id,))
-                user_row = cursor.fetchone()
-                if user_row:
-                    username = user_row[0]
-                else:
-                    return jsonify({'success': False, 'error': 'User not found'}), 404
-
-                comment_index = int(comment_index)
-                thread_id = comments[comment_index]['threadID']
-                insert_query = "INSERT INTO Reply (threadID, replyText, created_by) VALUES (%s, %s, %s)"
-                cursor.execute(insert_query, (thread_id, reply_text, user_id))
-                db.commit()
-
-                # Insert reply into dictionary with the fetched username
-                new_reply = {
-                    'user': username,  # Use the fetched username
-                    'reply': reply_text
-                }
-                comments[comment_index]['replies'].append(new_reply)
-                comments[comment_index]['count'] += 1
-
-                return jsonify({
-                    'success': True,
-                    'reply': new_reply
-                })
-            except (IndexError, ValueError) as e:
-                return jsonify({
-                    'success': False,
-                    'error': 'Invalid comment index'
-                })
+            db.thread.update_one(
+                {'_id': ObjectId(comment_index)},
+                {'$push': {'replies': {'userID': user_id, 'user': session.get('username'), 'reply': reply_text}}}
+            )
+            return jsonify({
+                'success': True,
+                'reply': {'user': session.get('username'), 'reply': reply_text}
+            })
         else:
             return jsonify({
                 'success': False,
                 'error': 'Invalid data'
             }), 400
-
-    except mysql.connector.Error as err:
+    except Exception as e:
         return jsonify({
             'success': False,
-            'error': f"Error inserting into database: {err}"
+            'error': f"Error inserting into database: {e}"
         }), 500
 
-    finally:
-        cursor.close()
+    # db = get_db()
+    # cursor = db.cursor()
+
+    # data = request.get_json()
+    # comment_index = data.get('comment_index')
+    # reply_text = data.get('reply')
+
+    # # Assuming you have a user in the session
+    # user_id = session.get('user_id')
+
+    # try:
+    #     if comment_index is not None and reply_text and user_id:
+    #         try:
+    #             # Fetch the username from the database using user_id
+    #             cursor.execute("SELECT userName FROM User WHERE userID = %s", (user_id,))
+    #             user_row = cursor.fetchone()
+    #             if user_row:
+    #                 username = user_row[0]
+    #             else:
+    #                 return jsonify({'success': False, 'error': 'User not found'}), 404
+
+    #             comment_index = int(comment_index)
+    #             thread_id = comments[comment_index]['threadID']
+    #             insert_query = "INSERT INTO Reply (threadID, replyText, created_by) VALUES (%s, %s, %s)"
+    #             cursor.execute(insert_query, (thread_id, reply_text, user_id))
+    #             db.commit()
+
+    #             # Insert reply into dictionary with the fetched username
+    #             new_reply = {
+    #                 'user': username,  # Use the fetched username
+    #                 'reply': reply_text
+    #             }
+    #             comments[comment_index]['replies'].append(new_reply)
+    #             comments[comment_index]['count'] += 1
+
+    #             return jsonify({
+    #                 'success': True,
+    #                 'reply': new_reply
+    #             })
+    #         except (IndexError, ValueError) as e:
+    #             return jsonify({
+    #                 'success': False,
+    #                 'error': 'Invalid comment index'
+    #             })
+    #     else:
+    #         return jsonify({
+    #             'success': False,
+    #             'error': 'Invalid data'
+    #         }), 400
+
+    # except mysql.connector.Error as err:
+    #     return jsonify({
+    #         'success': False,
+    #         'error': f"Error inserting into database: {err}"
+    #     }), 500
+
+    # finally:
+    #     cursor.close()
 
 
 @app.route('/add_rating', methods=['POST'])

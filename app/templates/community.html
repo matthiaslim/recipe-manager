@@ -22,7 +22,7 @@
             {% for comment in comments %}
             <div class="list-group-item">
                 <div class="comment-header">
-                    <h5 class="comment-user">{{ comment.created_by }}</h5>
+                    <h5 class="comment-user">{{ comment.created_by_username }}</h5>
                 </div>
                 <p class="comment-text">{{ comment.threadName }}</p>
                 <div class="comment-footer">
@@ -174,7 +174,7 @@
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
-                            comment_index: currentCommentIndex,
+                            comment_index: comments[currentCommentIndex].threadID,
                             reply: replyInput
                         })
                     })
