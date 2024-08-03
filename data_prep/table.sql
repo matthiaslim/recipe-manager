@@ -166,7 +166,7 @@ BEFORE UPDATE ON Recipe
 FOR EACH ROW
 BEGIN
     IF @allow_trigger_update IS NULL THEN
-        SET @allow_trigger_update = FALSE
+        SET @allow_trigger_update = FALSE;
     END IF;
 
     IF @allow_trigger_update = FALSE AND NEW.averageRating <> OLD.averageRating THEN
