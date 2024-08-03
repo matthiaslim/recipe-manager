@@ -1,6 +1,6 @@
 {% extends "shared/layout.html" %}
 
-{% block title %}Home{% endblock %}
+{% block title %}Community{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" type="text/css" href='/static/style.css' />
@@ -17,7 +17,7 @@
         </div>
     </div>
     <section>
-        <button id="addCommentButton" class="button">+ Add a Comment</button>
+        <button id="addCommentButton" class="btn btn-dark"><i class="fas fa-plus"></i> Add Comment</button>
         <div class="list-group">
             {% for comment in comments %}
             <div class="list-group-item">
@@ -78,20 +78,20 @@
             // Get the modal elements
             var replyModal = document.getElementById("replyModal");
             var addCommentModal = document.getElementById("addCommentModal");
-        
+
             // Get the buttons that open the modals
             var replyButtons = document.getElementsByClassName("replybutton");
             var addCommentButton = document.getElementById("addCommentButton");
-        
+
             // Get the <span> elements that close the modals
             var closeButtons = document.getElementsByClassName("close");
-        
+
             // Convert Jinja comments to JSON
             var comments = JSON.parse('{{ comments | tojson | safe }}');
-        
+
             // Variable to store the current comment index
             var currentCommentIndex;
-        
+
             // Loop through reply buttons and add click event
             Array.from(replyButtons).forEach(function(btn) {
                 btn.onclick = function() {
@@ -100,14 +100,14 @@
                     var replies = comments[currentCommentIndex].replies;
                     var commentText = comments[currentCommentIndex].threadName;
                     var commentUser = comments[currentCommentIndex].created_by;
-        
+
                     var replyContainer = document.getElementById("replyContainer");
                     var commentContent = document.getElementById("commentContent");
-        
+
                     // Clear previous replies and comment content
                     replyContainer.innerHTML = '';
                     commentContent.innerHTML = '';
-        
+
                     fetch('/get_replies/' + threadID)
                         .then(response => response.json())
                         .then(data => {
@@ -141,12 +141,12 @@
                         .catch(error => console.error('Error:', error));
                 };
             });
-        
+
             // When the user clicks on add comment button, open the add comment modal
             addCommentButton.onclick = function() {
                 addCommentModal.style.display = "block";
             }
-        
+
             // When the user clicks on <span> (x), close the modal
             Array.from(closeButtons).forEach(function(span) {
                 span.onclick = function() {
@@ -154,7 +154,7 @@
                     addCommentModal.style.display = "none";
                 }
             });
-        
+
             // When the user clicks anywhere outside of the modal, close it
             window.onclick = function(event) {
                 if (event.target == replyModal || event.target == addCommentModal) {
@@ -162,11 +162,11 @@
                     addCommentModal.style.display = "none";
                 }
             }
-        
+
             // Handle reply submission
             document.getElementById('submitReply').onclick = function() {
                 var replyInput = document.getElementById('replyInput').value;
-                
+
                 if (replyInput) {
                     fetch('/add_reply', {
                         method: 'POST',
@@ -186,15 +186,15 @@
                             replyDiv.className = 'reply';
                             replyDiv.innerHTML = '<h6 class="reply-user">' + data.reply.user + '</h6><p class="reply-text">' + data.reply.reply + '</p>';
                             document.getElementById('replyContainer').appendChild(replyDiv);
-        
+
                             // Clear the input field
                             document.getElementById('replyInput').value = '';
-                            
+
                             // Update the count displayed for the comment
                             var countElement = document.querySelector('.comment-count');
                             var currentCount = parseInt(countElement.textContent); // Get current count
                             countElement.textContent = currentCount + 1; // Increment count
-                            
+
                         } else {
                             alert('Error: ' + data.error);
                         }
@@ -202,11 +202,11 @@
                     .catch(error => console.error('Error:', error));
                 }
             }
-        
+
             // Handle comment submission
             document.getElementById('submitComment').onclick = function() {
                 var commentInput = document.getElementById('commentInput').value;
-                
+
                 if (commentInput) {
                     fetch('/add_comment', {
                         method: 'POST',
@@ -229,7 +229,7 @@
                     .catch(error => console.error('Error:', error));
                 }
             }
-        
+
             // Search functionality - automatically filter comments as user types
             document.getElementById('searchInput').addEventListener('input', function() {
                 var searchQuery = this.value.toLowerCase();
