@@ -575,7 +575,7 @@ def my_favourites():
         cursor = db.cursor(dictionary=True)
         if favourite_recipe_ids:
             format_strings = ','.join(['%s'] * len(favourite_recipe_ids))
-            cursor.execute(f"SELECT * FROM recipes WHERE recipeID IN ({format_strings})", tuple(favourite_recipe_ids))
+            cursor.execute(f"SELECT * FROM recipe WHERE recipeID IN ({format_strings})", tuple(favourite_recipe_ids))
             recipes = cursor.fetchall()
 
             # Fetch total number of favourite recipes
