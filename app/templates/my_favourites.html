@@ -50,8 +50,6 @@
                 <td>
                     <a href="{{ url_for('get_recipe_details', recipe_id=recipe.recipeID) }}"
                        class="btn btn-info btn-sm"><i class="fa fa-eye"></i></a>
-                    <a href="{{ url_for('edit_recipe', recipe_id=recipe.recipeID) }}" class="btn btn-warning btn-sm"><i
-                            class="fa fa-pen"></i></a>
                 </td>
             </tr>
             {% endfor %}
@@ -69,10 +67,18 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // Handle search input change event
-        document.getElementById('searchMyFavourites').addEventListener('submit', function (event) {
+        // Handle search form submission
+        document.getElementById('searchForm').addEventListener('submit', function (event) {
             event.preventDefault();
             searchRecipes();
+        });
+
+        // Handle pagination link clicks
+        document.querySelectorAll('.pagination a').forEach(function (link) {
+            link.addEventListener('click', function (event) {
+                event.preventDefault();
+                fetchPage(this.href);
+            });
         });
 
         // Function to handle dynamic search
@@ -83,13 +89,50 @@
             fetch(searchForm.action + '?' + new URLSearchParams(formData))
                 .then(response => response.text())
                 .then(html => {
-                    const recipesContainer = document.getElementById('myFavoriteRecipeContainer');
-                    if (recipesContainer) {
-                        recipesContainer.innerHTML = html;
-                    }
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newContent = doc.querySelector('#myFavoriteRecipeContainer').innerHTML;
+                    const newPagination = doc.querySelector('.d-flex').innerHTML;
+
+                    document.querySelector('#myFavoriteRecipeContainer').innerHTML = newContent;
+                    document.querySelector('.d-flex').innerHTML = newPagination;
+
+                    // Re-attach event listeners to new pagination links
+                    document.querySelectorAll('.pagination a').forEach(function (link) {
+                        link.addEventListener('click', function (event) {
+                            event.preventDefault();
+                            fetchPage(this.href);
+                        });
+                    });
                 })
                 .catch(error => {
                     console.error('Error fetching search results:', error);
+                });
+        }
+
+        // Function to handle pagination link clicks
+        function fetchPage(url) {
+            fetch(url)
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newContent = doc.querySelector('#myFavoriteRecipeContainer').innerHTML;
+                    const newPagination = doc.querySelector('.d-flex').innerHTML;
+
+                    document.querySelector('#myFavoriteRecipeContainer').innerHTML = newContent;
+                    document.querySelector('.d-flex').innerHTML = newPagination;
+
+                    // Re-attach event listeners to new pagination links
+                    document.querySelectorAll('.pagination a').forEach(function (link) {
+                        link.addEventListener('click', function (event) {
+                            event.preventDefault();
+                            fetchPage(this.href);
+                        });
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching page:', error);
                 });
         }
     });

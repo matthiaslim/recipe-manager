@@ -1,7 +1,6 @@
 # config.py
 import os
 import subprocess
-import platform
 from dotenv import load_dotenv
 
 load_dotenv()  # load environment variables from .env file
@@ -29,14 +28,13 @@ print(f"MYSQL_DB={Config.MYSQL_DB}")
 
 def start_redis():
     try:
-        if platform.system() == 'Windows':
-            # Use wsl command to start Redis inside WSL
-            subprocess.Popen(['wsl', 'redis-server'])
-        else:
-            subprocess.Popen(['redis-server'])
+        # Change to your full path to the redis-server executable
+        redis_server_path = 'C:\\Users\\Edric Ho\\Downloads\\Software\\Redis-x64-3.0.504\\redis-server.exe'
+        # Optionally, specify a configuration file
+        redis_conf_path = 'C:\\Users\\Edric Ho\\Downloads\\Software\\Redis-x64-3.0.504\\redis.windows.conf'
+        
+        subprocess.Popen([redis_server_path, redis_conf_path])
         print("Redis server started")
-    except FileNotFoundError:
-        print("Failed to start Redis server: redis-server executable not found in PATH.")
     except Exception as e:
         print(f"Failed to start Redis server: {e}")
 

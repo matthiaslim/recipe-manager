@@ -76,53 +76,53 @@ def index():
     return render_template('index.html')
 
 
-# Favourites
-@app.route('/favourites')
-def favourites():
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    user_id = session.get('user_id')
+# # Favourites
+# @app.route('/favourites')
+# def favourites():
+#     db = get_db()
+#     cursor = db.cursor(dictionary=True)
+#     user_id = session.get('user_id')
 
-    try:
-        if request.method == 'POST':
-            page = request.args.get('page', 1, type=int)
-        else:
-            page = request.args.get('page', 1, type=int)
+#     try:
+#         if request.method == 'POST':
+#             page = request.args.get('page', 1, type=int)
+#         else:
+#             page = request.args.get('page', 1, type=int)
 
-        per_page = 7  # Number of recipes per page
-        offset = (page - 1) * per_page
+#         per_page = 7  # Number of recipes per page
+#         offset = (page - 1) * per_page
 
-        # SQL query to fetch recipes with optional search filter
-        query = 'SELECT * FROM Recipe WHERE created_by = %s'
-        params = [user_id]
+#         # SQL query to fetch recipes with optional search filter
+#         query = 'SELECT * FROM Recipe WHERE created_by = %s'
+#         params = [user_id]
 
-        query += ' LIMIT %s OFFSET %s'
-        params.extend([per_page, offset])
+#         query += ' LIMIT %s OFFSET %s'
+#         params.extend([per_page, offset])
 
-        cursor.execute(query, params)
-        recipes = cursor.fetchall()
+#         cursor.execute(query, params)
+#         recipes = cursor.fetchall()
 
-        # Get the total count of recipes created by the user
-        cursor.execute('SELECT COUNT(*) as count FROM Recipe WHERE created_by = %s', (user_id,))
-        total_count = cursor.fetchone()['count']
+#         # Get the total count of recipes created by the user
+#         cursor.execute('SELECT COUNT(*) as count FROM Recipe WHERE created_by = %s', (user_id,))
+#         total_count = cursor.fetchone()['count']
 
-        # Calculate the total number of pages
-        total_pages = (total_count + per_page - 1) // per_page
+#         # Calculate the total number of pages
+#         total_pages = (total_count + per_page - 1) // per_page
 
-        # Create pagination object
-        pagination = Pagination(page=page, total=total_count, per_page=per_page,
-                                css_framework='bootstrap4')
+#         # Create pagination object
+#         pagination = Pagination(page=page, total=total_count, per_page=per_page,
+#                                 css_framework='bootstrap4')
 
-        return render_template('favourites.html', recipes=recipes, page=page, total_count=total_count,
-                               total_pages=total_pages, pagination=pagination)
+#         return render_template('favourites.html', recipes=recipes, page=page, total_count=total_count,
+#                                total_pages=total_pages, pagination=pagination)
 
-    except (mysql.connector.Error, KeyError, TypeError) as err:
-        flash(f"Database error: {err}", 'danger')
-        return redirect(url_for('index'))
+#     except (mysql.connector.Error, KeyError, TypeError) as err:
+#         flash(f"Database error: {err}", 'danger')
+#         return redirect(url_for('index'))
 
-    finally:
-        cursor.close()
-        db.close()
+#     finally:
+#         cursor.close()
+#         db.close()
 
 
 # Login
@@ -437,6 +437,7 @@ def search_by_ingredient():
 def get_recipe_details(recipe_id):
     db = get_db()
     cursor = db.cursor(dictionary=True)
+    user_id = session.get('user_id')
 
     try:
         # Get recipe details
@@ -476,9 +477,15 @@ def get_recipe_details(recipe_id):
             ''', (recipe_id,))
         ratings = cursor.fetchall()
 
+        # Check if the recipe is favorited by the current user
+        is_favourited = False
+        if user_id:
+            redis_db = get_redis()
+            is_favourited = redis_db.sismember(f'user:{user_id}:favourites', recipe_id)
+
         return render_template('recipes/recipe_details.html', recipe=recipe, ingredients=ingredients,
                                directions=directions,
-                               ratings=ratings)
+                               ratings=ratings, is_favourited=is_favourited)
 
     except mysql.connector.Error as err:
         flash(f"Error: {err}", 'danger')
@@ -488,10 +495,12 @@ def get_recipe_details(recipe_id):
         cursor.close()
         db.close()
 
-
-@app.route('/save_favorite', methods=['POST'])
+@app.route('/save_favourite', methods=['POST'])
 @login_required
-def save_favorite():
+def save_favourite():
+    if request.content_type != 'application/json':
+        return jsonify({'success': False, 'message': 'Content-Type must be application/json'}), 400
+
     user_id = session.get('user_id')
     data = request.get_json()
     recipe_id = data.get('recipe_id')
@@ -501,41 +510,63 @@ def save_favorite():
 
     try:
         redis_db = get_redis()
-        # Use a Redis set to store favorite recipes for each user
-        redis_db.sadd(f'user:{user_id}:favorites', recipe_id)
-        return jsonify({'success': True, 'message': 'Recipe added to favorites'})
+        # Check if the recipe is already favorited
+        if redis_db.sismember(f'user:{user_id}:favourites', recipe_id):
+            # If already favorited, remove it
+            redis_db.srem(f'user:{user_id}:favourites', recipe_id)
+            return jsonify({'success': True, 'message': 'Recipe removed from favourites'})
+        else:
+            # If not favorited, add it
+            redis_db.sadd(f'user:{user_id}:favourites', recipe_id)
+            return jsonify({'success': True, 'message': 'Recipe added to favourites'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
-
-@app.route('/my_favourites')
+@app.route('/favourites')
 @login_required
 def my_favourites():
     user_id = session.get('user_id')
     if not user_id:
-        flash('You need to be logged in to view your favorite recipes!', 'danger')
+        flash('You need to be logged in to view your favourite recipes!', 'danger')
         return redirect(url_for('login'))
 
     try:
         redis_db = get_redis()
         # Fetch favorite recipe IDs from Redis
-        favorite_recipe_ids = redis_db.smembers(f'user:{user_id}:favorites')
-        favorite_recipe_ids = [int(recipe_id) for recipe_id in favorite_recipe_ids]
+        favourite_recipe_ids = redis_db.smembers(f'user:{user_id}:favourites')
+        favourite_recipe_ids = [int(recipe_id) for recipe_id in favourite_recipe_ids]
+
+        # Get current page number
+        page = request.args.get(get_page_parameter(), type=int, default=1)
+        per_page = 5  # Number of favourites per page
+        offset = (page - 1) * per_page
 
         # Fetch recipe details from the database
         db = get_db()
         cursor = db.cursor(dictionary=True)
-        if favorite_recipe_ids:
-            format_strings = ','.join(['%s'] * len(favorite_recipe_ids))
-            cursor.execute(f"SELECT * FROM recipes WHERE recipeID IN ({format_strings})", tuple(favorite_recipe_ids))
+        if favourite_recipe_ids:
+            format_strings = ','.join(['%s'] * len(favourite_recipe_ids))
+            cursor.execute(f"SELECT * FROM Recipe WHERE recipeID IN ({format_strings}) LIMIT %s OFFSET %s", tuple(favourite_recipe_ids) + (per_page, offset))
             recipes = cursor.fetchall()
+
+            # Fetch total number of favourite recipes
+            cursor.execute(f"SELECT COUNT(*) as total FROM Recipe WHERE recipeID IN ({format_strings})", tuple(favourite_recipe_ids))
+            total = cursor.fetchone()['total']
         else:
             recipes = []
+            total = 0
 
-        return render_template('my_favourites.html', recipes=recipes)
+        # Create pagination object
+        pagination = Pagination(page=page, total=total, per_page=per_page, css_framework='bootstrap5')
+        pagination.record_name = 'favourites'
+
+        return render_template('my_favourites.html', recipes=recipes, pagination=pagination)
     except Exception as e:
-        flash(f'Error fetching favorite recipes: {str(e)}', 'danger')
+        flash(f'Error fetching favourite recipes: {str(e)}', 'danger')
         return redirect(url_for('index'))
+    finally:
+        cursor.close()
+        db.close()
 
 
 # My Recipes Page
