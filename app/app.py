@@ -91,7 +91,6 @@ def get_threads_with_replies(search_query=None):
 def inject_user():
     return dict(user_logged_in='username' in session, username=session.get('username'))
 
-
 # Index
 @app.route('/')
 def index():
@@ -814,7 +813,7 @@ def community():
 
 
 @login_required
-@app.route('/get_replies/<int:thread_id>', methods=['GET'])
+@app.route('/get_replies/<string:thread_id>', methods=['GET'])
 def get_replies(thread_id):
     db = get_mongo_db()
     try:
@@ -828,31 +827,6 @@ def get_replies(thread_id):
             'success': False,
             'error': f"Error fetching replies from database: {e}"
         }), 500
-    # db = get_db()
-    # cursor = db.cursor()
-    # try:
-    #     cursor.execute('''
-    #         SELECT u.userName, r.replyText 
-    #         FROM Reply r
-    #         JOIN User u ON r.created_by = u.userID 
-    #         WHERE r.threadID = %s
-    #     ''', (thread_id,))
-    #     replies = cursor.fetchall()
-
-    #     return jsonify({
-    #         'success': True,
-    #         'replies': [{'user': reply[0], 'reply': reply[1]} for reply in replies]
-    #     })
-
-    # except mysql.connector.Error as err:
-    #     return jsonify({
-    #         'success': False,
-    #         'error': f"Error fetching replies from database: {err}"
-    #     }), 500
-
-    # finally:
-    #     cursor.close()
-
 
 @app.route('/add_comment', methods=['POST'])
 @login_required
@@ -867,7 +841,6 @@ def add_comment():
 
     try:
         if comment_text:
-            # Insert comment into Thread table
             db.thread.insert_one({
                 'threadName': comment_text,
                 'created_by': session.get('user_id'),
@@ -888,53 +861,6 @@ def add_comment():
             'success': False,
             'error': f"Error inserting into database: {e}"
         }), 500
-
-    # db = get_db()
-    # cursor = db.cursor()
-
-    # data = request.get_json()
-    # comment_text = data.get('comment')
-
-    # # Assuming you have a user in the session
-    # user = session.get('username', 'Anonymous')
-    # user_id = session.get('user_id')
-
-    # try:
-    #     if comment_text and user:
-    #         # Insert thread into Thread table
-    #         insert_query = "INSERT INTO Thread (threadName, created_by) VALUES (%s, %s)"
-    #         cursor.execute(insert_query, (comment_text, user_id))
-    #         db.commit()
-
-    #         thread_id = cursor.lastrowid
-
-    #         new_comment = {
-    #             'threadID': thread_id,
-    #             'threadName': comment_text,
-    #             'created_by': user_id,
-    #             'count': 0,
-    #             'replies': []
-    #         }
-    #         comments.append(new_comment)
-
-    #         return jsonify({
-    #             'success': True,
-    #             'comment': new_comment
-    #         })
-    #     else:
-    #         return jsonify({
-    #             'success': False,
-    #             'error': 'Invalid data'
-    #         }), 400
-    # except mysql.connector.Error as err:
-    #     return jsonify({
-    #         'success': False,
-    #         'error': f"Error inserting into database: {err}"
-    #     }), 500
-
-    # finally:
-    #     cursor.close()
-
 
 @app.route('/add_reply', methods=['POST'])
 @login_required
@@ -969,66 +895,6 @@ def add_reply():
             'success': False,
             'error': f"Error inserting into database: {e}"
         }), 500
-
-    # db = get_db()
-    # cursor = db.cursor()
-
-    # data = request.get_json()
-    # comment_index = data.get('comment_index')
-    # reply_text = data.get('reply')
-
-    # # Assuming you have a user in the session
-    # user_id = session.get('user_id')
-
-    # try:
-    #     if comment_index is not None and reply_text and user_id:
-    #         try:
-    #             # Fetch the username from the database using user_id
-    #             cursor.execute("SELECT userName FROM User WHERE userID = %s", (user_id,))
-    #             user_row = cursor.fetchone()
-    #             if user_row:
-    #                 username = user_row[0]
-    #             else:
-    #                 return jsonify({'success': False, 'error': 'User not found'}), 404
-
-    #             comment_index = int(comment_index)
-    #             thread_id = comments[comment_index]['threadID']
-    #             insert_query = "INSERT INTO Reply (threadID, replyText, created_by) VALUES (%s, %s, %s)"
-    #             cursor.execute(insert_query, (thread_id, reply_text, user_id))
-    #             db.commit()
-
-    #             # Insert reply into dictionary with the fetched username
-    #             new_reply = {
-    #                 'user': username,  # Use the fetched username
-    #                 'reply': reply_text
-    #             }
-    #             comments[comment_index]['replies'].append(new_reply)
-    #             comments[comment_index]['count'] += 1
-
-    #             return jsonify({
-    #                 'success': True,
-    #                 'reply': new_reply
-    #             })
-    #         except (IndexError, ValueError) as e:
-    #             return jsonify({
-    #                 'success': False,
-    #                 'error': 'Invalid comment index'
-    #             })
-    #     else:
-    #         return jsonify({
-    #             'success': False,
-    #             'error': 'Invalid data'
-    #         }), 400
-
-    # except mysql.connector.Error as err:
-    #     return jsonify({
-    #         'success': False,
-    #         'error': f"Error inserting into database: {err}"
-    #     }), 500
-
-    # finally:
-    #     cursor.close()
-
 
 @app.route('/add_rating', methods=['POST'])
 def add_rating():
