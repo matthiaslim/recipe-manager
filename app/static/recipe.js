@@ -2,23 +2,27 @@ document.addEventListener('DOMContentLoaded', function () {
     loadPreviousSearches();
 
     function saveSearchTerm(term) {
-        let searches = JSON.parse(localStorage.getItem('previousSearches')) || [];
-        searches = searches.filter(search => search !== term);
-        searches.unshift(term);
-        searches = searches.slice(0, 10);
-        localStorage.setItem('previousSearches', JSON.stringify(searches));
-        loadPreviousSearches();
+        fetch('/save_search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ term: term })
+        }).then(() => loadPreviousSearches());
     }
 
     function loadPreviousSearches() {
-        const searches = JSON.parse(localStorage.getItem('previousSearches')) || [];
-        const datalist = document.getElementById('previousSearches');
-        datalist.innerHTML = '';
-        searches.forEach(search => {
-            const option = document.createElement('option');
-            option.value = search;
-            datalist.appendChild(option);
-        });
+        fetch('/load_searches')
+            .then(response => response.json())
+            .then(searches => {
+                const datalist = document.getElementById('previousSearches');
+                datalist.innerHTML = '';
+                searches.forEach(search => {
+                    const option = document.createElement('option');
+                    option.value = search;
+                    datalist.appendChild(option);
+                });
+            });
     }
 
     // Save search term on form submission

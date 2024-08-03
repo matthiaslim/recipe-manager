@@ -75,7 +75,27 @@ def inject_user():
 def index():
     return render_template('index.html')
 
+@app.route('/save_search', methods=['POST'])
+def save_search():
+    term = request.json.get('term')
+    user_id = session.get('user_id')
+    if term:
+        r = get_redis()
+        key = f'previous_searches:{user_id}'
+        r.lrem(key, 0, term)
+        r.lpush(key, term)
+        r.ltrim(key, 0, 9)
+    return '', 204
 
+@app.route('/load_searches', methods=['GET'])
+def load_searches():
+    user_id = session.get('user_id')
+    if user_id:
+        r = get_redis()
+        key = f'previous_searches:{user_id}'
+        searches = r.lrange(key, 0, -1)
+        return jsonify([search for search in searches])
+    
 # # Favourites
 # @app.route('/favourites')
 # def favourites():
@@ -499,9 +519,6 @@ def get_recipe_details(recipe_id):
 @app.route('/save_favourite', methods=['POST'])
 @login_required
 def save_favourite():
-    if request.content_type != 'application/json':
-        return jsonify({'success': False, 'message': 'Content-Type must be application/json'}), 400
-
     user_id = session.get('user_id')
     data = request.get_json()
     recipe_id = data.get('recipe_id')
@@ -511,15 +528,9 @@ def save_favourite():
 
     try:
         redis_db = get_redis()
-        # Check if the recipe is already favorited
-        if redis_db.sismember(f'user:{user_id}:favourites', recipe_id):
-            # If already favorited, remove it
-            redis_db.srem(f'user:{user_id}:favourites', recipe_id)
-            return jsonify({'success': True, 'message': 'Recipe removed from favourites'})
-        else:
-            # If not favorited, add it
-            redis_db.sadd(f'user:{user_id}:favourites', recipe_id)
-            return jsonify({'success': True, 'message': 'Recipe added to favourites'})
+        # Use a Redis set to store favourite recipes for each user
+        redis_db.sadd(f'user:{user_id}:favourites', recipe_id)
+        return jsonify({'success': True, 'message': 'Recipe added to favourites'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
@@ -533,21 +544,16 @@ def my_favourites():
 
     try:
         redis_db = get_redis()
-        # Fetch favorite recipe IDs from Redis
+        # Fetch favourite recipe IDs from Redis
         favourite_recipe_ids = redis_db.smembers(f'user:{user_id}:favourites')
         favourite_recipe_ids = [int(recipe_id) for recipe_id in favourite_recipe_ids]
-
-        # Get current page number
-        page = request.args.get(get_page_parameter(), type=int, default=1)
-        per_page = 5  # Number of favourites per page
-        offset = (page - 1) * per_page
 
         # Fetch recipe details from the database
         db = get_db()
         cursor = db.cursor(dictionary=True)
         if favourite_recipe_ids:
             format_strings = ','.join(['%s'] * len(favourite_recipe_ids))
-            cursor.execute(f"SELECT * FROM Recipe WHERE recipeID IN ({format_strings}) LIMIT %s OFFSET %s", tuple(favourite_recipe_ids) + (per_page, offset))
+            cursor.execute(f"SELECT * FROM recipes WHERE recipeID IN ({format_strings})", tuple(favourite_recipe_ids))
             recipes = cursor.fetchall()
 
             # Fetch total number of favourite recipes

@@ -4,3 +4,4 @@ bcrypt==4.1.3
 mysql-connector-python==8.4.0
 python-dotenv==1.0.1
 redis==5.0.8
+flask-redis==0.4.0
