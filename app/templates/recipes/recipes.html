@@ -1,12 +1,11 @@
 {% extends "shared/layout.html" %}
 
-{% block title %}Discover Recipes{% endblock %}
+{% block title %}{{ page_title }}{% endblock %}
 
 {% block content %}
-
 <div class="container-fluid" style="width: 80%;">
-    <h1 class="text-center">Discover Recipes</h1>
-    <form id="searchForm" action="{{ url_for('get_recipes') }}" method="GET">
+    <h1 class="text-center">{{ page_title }}</h1>
+    <form id="searchForm" action="{{ url_for('get_recipes') if is_discover else url_for('my_recipes') }}" method="GET">
         <div class="row">
             <div class="col-auto">
                 <label for="searchRecipes" class="visually-hidden">Search Recipes</label>
@@ -26,8 +25,7 @@
     <div class="row">
         <div class="container-fluid text-end">
             {% if user_logged_in %}
-            <a class="btn btn-dark" href="{{ url_for('add_recipe') }}"><i class="fas fa-plus"></i>
-                New Recipe</a>
+            <a class="btn btn-warning" href="{{ url_for('add_recipe') }}"><i class="fas fa-plus"></i> New Recipe</a>
             {% endif %}
         </div>
     </div>
@@ -35,23 +33,27 @@
 
 <div class="container-fluid text-center" id="recipesContainer">
     <table id="recipeTable" class="table table-bordered table-hover">
-        <thead class="thead-dark">
+        <thead class="table-danger">
         <tr>
             <th>Title</th>
             <th>Description</th>
+            {% if is_discover %}
             <th>Created By</th>
+            {% endif %}
             <th>Actions</th>
         </tr>
         </thead>
-        <tbody>
+        <tbody class="table-group-divider">
         {% for recipe in recipes %}
         <tr>
             <td>{{ recipe.recipeName }}</td>
             <td>{{ recipe.description }}</td>
+            {% if is_discover %}
             <td>{{ recipe.username }}</td>
+            {% endif %}
             <td>
                 <a href="{{ url_for('get_recipe_details', recipe_id=recipe.recipeID) }}"
-                   class="btn btn-primary btn-sm">More Details</a>
+                   class="btn btn-warning btn-sm">More Details</a>
             </td>
         </tr>
         {% endfor %}
@@ -64,7 +66,7 @@
     </div>
 </div>
 <p class="text-center">
-    <button class="btn btn-dark" type="button" data-bs-toggle="collapse" data-bs-target="#searchIngredientsCollapse"
+    <button class="btn btn-warning" type="button" data-bs-toggle="collapse" data-bs-target="#searchIngredientsCollapse"
             aria-expanded="false" aria-controls="collapseExample">
         Search by Ingredients
     </button>
@@ -96,7 +98,7 @@
             </div>
         </div>
         <div class="col-12">
-            <button class="btn btn-dark mt-3" type="submit">Search</button>
+            <button class="btn btn-warning mt-3" type="submit">Search</button>
         </div>
     </form>
 </div>

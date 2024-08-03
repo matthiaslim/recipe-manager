@@ -186,7 +186,7 @@ def register():
                 # Insert new user into database
                 cursor.execute('INSERT INTO User (username, password) VALUES (%s, %s)', (username, hashed_password))
                 db.commit()
-                # flash('Registration successful!', 'success')
+                flash('Registration successful!', 'success')
                 return redirect(url_for('login'))
         except mysql.connector.Error as err:
             flash(f"Error: {err}", 'danger')
@@ -280,7 +280,7 @@ def change_password():
 
 # Recipe CRUD
 # Get all recipes
-@app.route('/recipes')
+@app.route('/recipes', methods=['GET'])
 def get_recipes():
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -319,7 +319,8 @@ def get_recipes():
         pagination = Pagination(page=page, total=total, per_page=per_page, css_framework='bootstrap5',
                                 search=search_term, record_name='recipes')
 
-        return render_template('recipes/recipes.html', recipes=recipes, pagination=pagination, search_term=search_term)
+        return render_template('recipes/recipes.html', page_title="Discover Recipes", recipes=recipes,
+                               pagination=pagination, search_term=search_term, is_discover=True)
 
     except mysql.connector.Error as err:
         flash(f"Database error: {err}", 'danger')
@@ -570,7 +571,7 @@ def my_favourites():
 
 
 # My Recipes Page
-@app.route('/my_recipes', methods=['GET', 'POST'])
+@app.route('/my_recipes', methods=['GET'])
 @login_required
 def my_recipes():
     db = get_db()
@@ -578,12 +579,8 @@ def my_recipes():
     user_id = session.get('user_id')
 
     try:
-        if request.method == 'POST':
-            search_term = request.form.get('search_term', '')
-            page = request.args.get('page', 1, type=int)
-        else:
-            search_term = request.args.get('search_term', '')
-            page = request.args.get('page', 1, type=int)
+        search_term = request.args.get('search', '')
+        page = request.args.get('page', 1, type=int)
 
         per_page = 5  # Number of recipes per page
         offset = (page - 1) * per_page
@@ -606,15 +603,12 @@ def my_recipes():
         cursor.execute('SELECT COUNT(*) as count FROM Recipe WHERE created_by = %s', (user_id,))
         total_count = cursor.fetchone()['count']
 
-        # Calculate the total number of pages
-        total_pages = (total_count + per_page - 1) // per_page
-
         # Create pagination object
         pagination = Pagination(page=page, total=total_count, per_page=per_page, search=search_term,
-                                css_framework='bootstrap4')
+                                css_framework='bootstrap5')
 
-        return render_template('recipes/my_recipes.html', recipes=recipes, page=page, total_count=total_count,
-                               total_pages=total_pages, search_term=search_term, pagination=pagination)
+        return render_template('recipes/recipes.html', page_title="My Recipes", recipes=recipes,
+                               search_term=search_term, pagination=pagination, is_discover=False)
 
     except (mysql.connector.Error, KeyError, TypeError) as err:
         flash(f"Database error: {err}", 'danger')
