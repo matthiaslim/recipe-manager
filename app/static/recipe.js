@@ -25,9 +25,17 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
+    function clearSearchHistory() {
+        fetch('/clear_searches', {
+            method: 'POST',
+        }).then(() => loadPreviousSearches());
+    }
+
     // Save search term on form submission
     document.getElementById('searchForm').addEventListener('submit', function (event) {
         const searchTerm = document.getElementById('searchRecipes').value;
         saveSearchTerm(searchTerm);
     });
+
+    document.getElementById('clearHistory').addEventListener('click', clearSearchHistory);
 });
