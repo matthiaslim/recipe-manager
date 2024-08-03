@@ -1,0 +1,103 @@
+{% extends "shared/layout.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" type="text/css" href='/static/style.css' />
+<style>
+    table {
+        table-layout: fixed; /* Ensures fixed column widths */
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+        word-wrap: break-word; /* Ensures text wraps within cells */
+    }
+    th {
+        background-color: #f2f2f2;
+    }
+    .col-name {
+        width: 200px; /* Fixed width for the Name column */
+    }
+    .col-description {
+        width: 390px; /* Fixed width for the Description column */
+    }
+    .col-rating {
+        width: 80px; /* Fixed width for the Rating column */
+    }
+    .col-actions {
+        width: 60px; /* Fixed width for the Actions column */
+    }
+</style>
+<body>
+    <h1 class="text-center mb-5">Favourites</h1>
+    <div id="notification" class="alert alert-success" style="display: none;">
+        Removed from favourites successfully!
+    </div>
+    {% if total == 0 %}
+    <div class="container-fluid">
+        <a>No recipes found</a>
+    </div>
+    {% else %}
+    <div id="myRecipeContainer" class="table-responsive">
+        <table class="table table-bordered">
+            <thead class="thead-dark">
+            <tr>
+                <th class="col-name">Name</th>
+                <th class="col-description">Description</th>
+                <th class="col-rating">Rating</th>
+                <th class="col-actions">Actions</th>
+            </tr>
+            </thead>
+            <tbody class="table-light">
+            {% for recipe in recipes %}
+            <tr>
+                <td class="col-name">{{ recipe.recipeName }}</td>
+                <td class="col-description">{{ recipe.description }}</td>
+                <td class="col-rating">
+                    {% if recipe.averageRating %}
+                    {{ recipe.averageRating }} ({{ recipe.ratingCount }})
+                    {% else %}
+                    Not rated
+                    {% endif %}
+                </td>
+                <td class="col-actions">
+                    <a href="{{ url_for('get_recipe_details', recipe_id=recipe.recipeID) }}"
+                       class="btn btn-info btn-sm"><i class="fa fa-eye"></i></a>
+                    <button type="button" id="removeFavourites" class="btn btn-danger btn-sm"><i class="fa fa-heart"></i></button>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <!-- Pagination Controls -->
+    <div class="d-flex justify-content-center">
+        {{ pagination.links }}
+    </div>
+    {% endif %}
+</div>
+</body>
+{% endblock %}
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        const removeFavouritesButton = document.getElementById('removeFavourites');
+
+        removeFavouritesButton.addEventListener('click', () => {
+            const notification = document.getElementById('notification');
+            notification.style.display = 'block';
+
+            // Hide the notification after 3 seconds
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+
+            removeFavouritesButton.classList.remove('btn-danger');
+            removeFavouritesButton.classList.add('btn-light');
+        });
+    });
+
+</script>
+{% endblock %}

@@ -62,41 +62,6 @@ def get_threads_with_replies(search_query=None):
         db.close()
 
 
-# comments = get_threads_with_replies() # get all the threads
-
-# comments = [
-#     {
-#         'user': 'user1',
-#         'comment': 'Hellooo in general, how long does it take to make Nasi lemak?',
-#         'replies': [
-#             {'user': 'user2', 'reply': 'It usually takes about 2 hours.'},
-#             {'user': 'user3', 'reply': 'I think it depends on the recipe.'}
-#         ]
-#     },
-#     {
-#         'user': 'user2',
-#         'comment': 'Any recipes on how to make Army stew?',
-#         'replies': [
-#             {'user': 'user1', 'reply': 'Yes, I have one. I will share it later.'}
-#         ]
-#     },
-#     {
-#         'user': 'user3',
-#         'comment': 'Hihi, I\'m using a toaster instead of an oven to bake cookies, any idea on how long should I bake it for?',
-#         'replies': [
-#             {'user': 'user4', 'reply': 'Try baking for 15 minutes and check.'}
-#         ]
-#     },
-#     {
-#         'user': 'user4',
-#         'comment': 'Difference between condensed milk and evaporated milk? Does it really affect?',
-#         'replies': [
-#             {'user': 'user3', 'reply': 'Yes, condensed milk is sweetened while evaporated milk is not.'},
-#             {'user': 'user2', 'reply': 'They have different uses in recipes.'}
-#         ]
-#     }
-# ]
-
 # Context processor to inject `user_logged_in` and `username` into templates
 @app.context_processor
 def inject_user():
@@ -108,6 +73,54 @@ def inject_user():
 def index():
     return render_template('index.html')
 
+
+# Favourites
+@app.route('/favourites')
+def favourites():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    user_id = session.get('user_id')
+
+    try:
+        if request.method == 'POST':
+            page = request.args.get('page', 1, type=int)
+        else:
+            page = request.args.get('page', 1, type=int)
+
+        per_page = 7  # Number of recipes per page
+        offset = (page - 1) * per_page
+
+        # SQL query to fetch recipes with optional search filter
+        query = 'SELECT * FROM Recipe WHERE created_by = %s'
+        params = [user_id]
+
+        query += ' LIMIT %s OFFSET %s'
+        params.extend([per_page, offset])
+
+        cursor.execute(query, params)
+        recipes = cursor.fetchall()
+
+        # Get the total count of recipes created by the user
+        cursor.execute('SELECT COUNT(*) as count FROM Recipe WHERE created_by = %s', (user_id,))
+        total_count = cursor.fetchone()['count']
+
+        # Calculate the total number of pages
+        total_pages = (total_count + per_page - 1) // per_page
+
+        # Create pagination object
+        pagination = Pagination(page=page, total=total_count, per_page=per_page,
+                                css_framework='bootstrap4')
+
+        return render_template('favourites.html', recipes=recipes, page=page, total_count=total_count,
+                               total_pages=total_pages, pagination=pagination)
+
+    except (mysql.connector.Error, KeyError, TypeError) as err:
+        flash(f"Database error: {err}", 'danger')
+        return redirect(url_for('index'))
+
+    finally:
+        cursor.close()
+        db.close()
 
 # Login
 @app.route('/login', methods=['GET', 'POST'])

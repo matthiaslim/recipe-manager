@@ -3,11 +3,10 @@
 {% block title %}{{ recipe.recipeName }}{% endblock %}
 
 {% block content %}
+<div id="notification" class="alert alert-success" style="display: none;">
+    Added to favourites successfully!
+</div>
 <div class="container-fluid" style="width: 80%">
-    <!-- Notification div -->
-    <div id="notification" class="alert alert-success" style="display: none;">
-        Added to favourites successfully!
-    </div>
     <div class="container-fluid">
         <div class="row">
             <div class="col">
@@ -145,5 +144,24 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        const addFavouritesButton = document.getElementById('addFavourites');
+
+        addFavouritesButton.addEventListener('click', () => {
+            // Show the notification
+            const notification = document.getElementById('notification');
+            notification.style.display = 'block';
+
+            // Hide the notification after 3 seconds
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+
+            // Change button class to btn-danger
+            addFavouritesButton.classList.remove('btn-light');
+            addFavouritesButton.classList.add('btn-danger');
+        });
+    });
+</script>
 {% endblock %}
