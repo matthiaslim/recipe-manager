@@ -503,8 +503,8 @@ def get_recipe_details(recipe_id):
 @bp.route('/save_favourite', methods=['POST'])
 @login_required
 def save_favourite():
-    if request.content_type != 'bplication/json':
-        return jsonify({'success': False, 'message': 'Content-Type must be bplication/json'}), 400
+    if request.content_type != 'application/json':
+        return jsonify({'success': False, 'message': 'Content-Type must be application/json'}), 400
 
     user_id = session.get('user_id')
     data = request.get_json()
@@ -682,7 +682,15 @@ def add_recipe():
 def edit_recipe(recipe_id):
     db = get_db()
     cursor = db.cursor(dictionary=True)
+    current_user = session.get('user_id')
     try:
+        # Check if the current user is the creator of the recipe
+        cursor.execute("SELECT created_by FROM Recipe WHERE recipeID = %s", (recipe_id,))
+        creator_id = cursor.fetchone()['created_by']
+        if creator_id != current_user:
+            flash('You are not authorized to edit this recipe', 'danger')
+            return redirect(url_for('routes.get_recipes'))
+
         if request.method == 'POST':
             # Handle form submission to edit the recipe
             recipe_name = request.form.get('recipe_name')
