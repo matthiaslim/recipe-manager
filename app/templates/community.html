@@ -3,44 +3,76 @@
 {% block title %}Community{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" type="text/css" href='/static/style.css' />
-<body>
-    <h1 class="text-center mb-5">Community</h1>
-
-    <div class="container-fluid text-center">
+<div class="container-fluid" style="width: 80%;">
+    <h1 class="text-center">Community</h1>
+    <form id="searchCommentsForm">
         <div class="row">
-            <div class="col">
-                <div class="input-group mb-3" style="width: 60%; margin: 20px auto; padding-bottom:40px;">
-                    <input id="searchInput" class="form-control" type="text" placeholder="Search Comments..">
-                </div>
+            <div class="col-auto">
+                <label for="searchComments" class="visually-hidden">Search Comments</label>
+                <input id="searchComments" class="form-control" type="text" placeholder="Search Comments.." name="search" value="{{ search_query }}">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-outline-success">Search</button>
             </div>
         </div>
+    </form>
+
+    <div class="row mb-3">
+        <div class="container-fluid text-end">
+            <button id="addCommentButton" type="button" class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#addCommentModal">
+                <i class="fas fa-plus"></i> Add Comment
+            </button>
+        </div>
     </div>
-    <section>
-        <button id="addCommentButton" class="btn btn-dark"><i class="fas fa-plus"></i> Add Comment</button>
-        <div class="list-group">
+
+    <div class="row">
+        <div class="list-group" id="comments-data" data-comments="{{ comments|tojson|safe }}">
             {% for comment in comments %}
-            <div class="list-group-item">
+            <div class="list-group-item" data-thread-id="{{ comment.threadID }}">
                 <div class="comment-header">
                     <h5 class="comment-user">{{ comment.created_by_username }}</h5>
                 </div>
                 <p class="comment-text">{{ comment.threadName }}</p>
                 <div class="comment-footer">
-                    <i class="fa fa-comments fa-lg"></i>
-                    <span class="comment-count">{{ comment.count }}</span>
-                    <button class="replybutton" data-comment-index="{{ loop.index0 }}">Reply</button>
+                    <span class="comment-count"><i class="fa fa-comments fa-lg"></i>{{ comment.count }}</span>
+                    <button class="btn btn-warning replybutton" data-thread-id="{{ comment.threadID }}">Reply</button>
                 </div>
             </div>
             {% endfor %}
         </div>
-    </section>
+    </div>
+</div>
 
-    <!-- Reply Modal -->
-    <div id="replyModal" class="modal">
+<!-- Add Comment Modal -->
+<div class="modal fade" id="addCommentModal" tabindex="-1" aria-labelledby="addCommentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
         <div class="modal-content">
-            <span class="close">&times;</span>
-            <div class="modal-header" style="justify-content: center;">
-                <h3>Replies</h3>
+            <div class="modal-header">
+                <h1 class="modal-header fs-5" id="addCommentModalLabel">Add Comment</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addCommentForm">
+                    <div class="mb-3">
+                        <label for="commentInput" class="form-label">Comment</label>
+                        <textarea class="form-control" id="commentInput" rows="3" name="comment" placeholder="Add your comment" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <button type="submit" class="btn btn-primary">Submit Comment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reply Modal -->
+<div class="modal fade" id="replyModal" tabindex="-1" aria-labelledby="replyModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="replyModalLabel">Replies</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div id="commentContent" class="comment-content">
@@ -49,201 +81,18 @@
                 <div id="replyContainer" class="reply-container">
                     <!-- Replies will be dynamically added here -->
                 </div>
-                <div style="display:flex; flex-direction: column; justify-content: center;">
-                    <textarea id="replyInput" placeholder="Add your reply"></textarea>
-                    <button id="submitReply" class="button">Submit Reply</button>
-                </div>
+                <form id="replyForm">
+                    <div style="display:flex; flex-direction: column; justify-content: center;">
+                        <textarea id="replyInput" name="reply" placeholder="Add your reply" required></textarea>
+                        <button type="submit" class="btn btn-primary">Submit Reply</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Add Comment Modal -->
-    <div id="addCommentModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <div class="modal-header" style="justify-content: center;">
-                <h3>Add a Comment</h3>
-            </div>
-            <div class="modal-body">
-                <div style="display:flex; flex-direction: column; justify-content: center;">
-                    <textarea id="commentInput" placeholder="Add your comment"></textarea>
-                    <button id="submitComment" class="button">Submit Comment</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Get the modal elements
-            var replyModal = document.getElementById("replyModal");
-            var addCommentModal = document.getElementById("addCommentModal");
-
-            // Get the buttons that open the modals
-            var replyButtons = document.getElementsByClassName("replybutton");
-            var addCommentButton = document.getElementById("addCommentButton");
-
-            // Get the <span> elements that close the modals
-            var closeButtons = document.getElementsByClassName("close");
-
-            // Convert Jinja comments to JSON
-            var comments = JSON.parse('{{ comments | tojson | safe }}');
-
-            // Variable to store the current comment index
-            var currentCommentIndex;
-
-            // Loop through reply buttons and add click event
-            Array.from(replyButtons).forEach(function(btn) {
-                btn.onclick = function() {
-                    currentCommentIndex = this.getAttribute('data-comment-index');
-                    var threadID = comments[currentCommentIndex].threadID;
-                    var replies = comments[currentCommentIndex].replies;
-                    var commentText = comments[currentCommentIndex].threadName;
-                    var commentUser = comments[currentCommentIndex].created_by;
-
-                    var replyContainer = document.getElementById("replyContainer");
-                    var commentContent = document.getElementById("commentContent");
-
-                    // Clear previous replies and comment content
-                    replyContainer.innerHTML = '';
-                    commentContent.innerHTML = '';
-
-                    fetch('/get_replies/' + threadID)
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                // Add comment content to modal
-                                var commentDiv = document.createElement('div');
-                                commentDiv.className = 'comment';
-                                commentDiv.innerHTML = '<h6 class="comment-user">' + commentUser + '</h6><p class="comment-text">' + commentText + '</p>';
-                                commentContent.appendChild(commentDiv);
-
-                                var fetchedReplies = data.replies;
-
-                                // Update the comments array with fetched replies
-                                comments[currentCommentIndex].replies = fetchedReplies;
-                                replies = comments[currentCommentIndex].replies;
-
-                                // Add replies to modal
-                                replies.forEach(function(reply) {
-                                    var replyDiv = document.createElement('div');
-                                    replyDiv.className = 'reply';
-                                    replyDiv.innerHTML = '<h6 class="reply-user">' + reply.user + '</h6><p class="reply-text">' + reply.reply + '</p>';
-                                    replyContainer.appendChild(replyDiv);
-                                });
-
-                                // Open the reply modal
-                                replyModal.style.display = "block";
-                            } else {
-                                console.error('Error:', data.error);
-                            }
-                        })
-                        .catch(error => console.error('Error:', error));
-                };
-            });
-
-            // When the user clicks on add comment button, open the add comment modal
-            addCommentButton.onclick = function() {
-                addCommentModal.style.display = "block";
-            }
-
-            // When the user clicks on <span> (x), close the modal
-            Array.from(closeButtons).forEach(function(span) {
-                span.onclick = function() {
-                    replyModal.style.display = "none";
-                    addCommentModal.style.display = "none";
-                }
-            });
-
-            // When the user clicks anywhere outside of the modal, close it
-            window.onclick = function(event) {
-                if (event.target == replyModal || event.target == addCommentModal) {
-                    replyModal.style.display = "none";
-                    addCommentModal.style.display = "none";
-                }
-            }
-
-            // Handle reply submission
-            document.getElementById('submitReply').onclick = function() {
-                var replyInput = document.getElementById('replyInput').value;
-
-                if (replyInput) {
-                    fetch('/add_reply', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            comment_index: comments[currentCommentIndex].threadID,
-                            reply: replyInput
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Append the new reply to the reply container
-                            var replyDiv = document.createElement('div');
-                            replyDiv.className = 'reply';
-                            replyDiv.innerHTML = '<h6 class="reply-user">' + data.reply.user + '</h6><p class="reply-text">' + data.reply.reply + '</p>';
-                            document.getElementById('replyContainer').appendChild(replyDiv);
-
-                            // Clear the input field
-                            document.getElementById('replyInput').value = '';
-
-                            // Update the count displayed for the comment
-                            var countElement = document.querySelector('.comment-count');
-                            var currentCount = parseInt(countElement.textContent); // Get current count
-                            countElement.textContent = currentCount + 1; // Increment count
-
-                        } else {
-                            alert('Error: ' + data.error);
-                        }
-                    })
-                    .catch(error => console.error('Error:', error));
-                }
-            }
-
-            // Handle comment submission
-            document.getElementById('submitComment').onclick = function() {
-                var commentInput = document.getElementById('commentInput').value;
-
-                if (commentInput) {
-                    fetch('/add_comment', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            comment: commentInput
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Reload the page to display the new comment
-                            location.reload();
-                        } else {
-                            alert('Error: ' + data.error);
-                        }
-                    })
-                    .catch(error => console.error('Error:', error));
-                }
-            }
-
-            // Search functionality - automatically filter comments as user types
-            document.getElementById('searchInput').addEventListener('input', function() {
-                var searchQuery = this.value.toLowerCase();
-                var comments = document.getElementsByClassName('list-group-item');
-                for (var i = 0; i < comments.length; i++) {
-                    var commentText = comments[i].getElementsByClassName('comment-text')[0].innerText.toLowerCase();
-                    if (commentText.includes(searchQuery)) {
-                        comments[i].style.display = '';
-                    } else {
-                        comments[i].style.display = 'none';
-                    }
-                }
-            });
-        });
-    </script>
-</body>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='community.js') }}"></script>
 {% endblock %}

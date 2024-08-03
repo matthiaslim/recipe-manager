@@ -1,0 +1,103 @@
+document.addEventListener('DOMContentLoaded', () => {
+    const addCommentForm = document.getElementById('addCommentForm');
+    const replyForm = document.getElementById('replyForm');
+    const addCommentButton = document.getElementById('addCommentButton');
+    const commentsData = document.getElementById('comments-data');
+    const replyModal = new bootstrap.Modal(document.getElementById('replyModal'));
+
+    // Handle adding a comment
+    addCommentForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const commentInput = document.getElementById('commentInput');
+        const commentText = commentInput.value.trim();
+
+        if (commentText) {
+            try {
+                const response = await fetch('/add_comment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({comment: commentText})
+                });
+
+                if (response.ok) {
+                    window.location.reload(); // Reload page to show new comment
+                } else {
+                    console.error('Error adding comment');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    });
+
+    // Handle opening reply modal and setting up reply form
+    commentsData.addEventListener('click', (event) => {
+        if (event.target.classList.contains('replybutton')) {
+            const threadId = event.target.getAttribute('data-thread-id');
+            const commentElement = event.target.closest('.list-group-item');
+            const commentContent = commentElement.querySelector('.comment-text').innerHTML;
+            const replyContainer = document.getElementById('replyContainer');
+            const commentContentDiv = document.getElementById('commentContent');
+
+            commentContentDiv.innerHTML = `<p>${commentContent}</p>`;
+            replyContainer.innerHTML = ''; // Clear previous replies
+
+            // Fetch and display replies
+            fetchReplies(threadId);
+
+            // Set up reply form submission
+            replyForm.addEventListener('submit', async (replyEvent) => {
+                replyEvent.preventDefault();
+                const replyInput = document.getElementById('replyInput');
+                const replyText = replyInput.value.trim();
+
+                if (replyText) {
+                    try {
+                        const response = await fetch('/add_reply', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                comment_index: threadId,
+                                reply: replyText
+                            })
+                        });
+
+                        if (response.ok) {
+                            replyInput.value = ''; // Clear input
+                            fetchReplies(threadId); // Refresh replies
+                        } else {
+                            console.error('Error adding reply');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                    }
+                }
+            });
+
+            replyModal.show();
+        }
+    });
+
+    async function fetchReplies(threadId) {
+        try {
+            const response = await fetch(`/replies/${threadId}`); // Define this endpoint to get replies
+            if (response.ok) {
+                const data = await response.json();
+                const replyContainer = document.getElementById('replyContainer');
+                replyContainer.innerHTML = data.replies.map(reply => `
+                    <div class="reply">
+                        <p><strong>${reply.user}:</strong> ${reply.reply}</p>
+                    </div>
+                `).join('');
+            } else {
+                console.error('Error fetching replies');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+});

@@ -22,67 +22,6 @@ def login_required(f):
     return decorated_function
 
 
-def get_threads_with_replies(search_query=None):
-    db = get_mongo_db()
-    try:
-        if search_query:
-            threads = db.thread.find({'threadName': {'$regex': search_query, '$options': 'i'}})
-        else:
-            threads = db.thread.find()
-
-        comment_list = []
-        for thread in threads:
-            comment = {
-                'threadID': str(thread['_id']),
-                'threadName': thread['threadName'],
-                'created_by': thread['created_by'],
-                'created_by_username': thread['created_by_username'],
-                'replies': thread['replies'],
-                'count': len(thread['replies'])
-            }
-            comment_list.bpend(comment)
-        return comment_list
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f"Error fetching comments from database: {e}"
-        }), 500
-
-    # db = get_db()
-    # cursor = db.cursor(dictionary=True)
-    # try:
-    #     if search_query:
-    #         cursor.execute(
-    #             'SELECT t.threadID, t.threadName, u.userName, t.reply_count FROM temp_thread_with_replies t INNER JOIN User u ON t.thread_created_by = u.userID WHERE t.threadName LIKE %s',
-    #             ('%' + search_query + '%',))
-    #     else:
-    #         cursor.execute(
-    #             'SELECT t.threadID, t.threadName, u.userName, t.reply_count FROM temp_thread_with_replies t INNER JOIN User u ON t.thread_created_by = u.userID')
-    #     fetched_comments = cursor.fetchall()
-    #     comments_list = []
-    #     for comment in fetched_comments:
-    #         comment_dict = {
-    #             'threadID': comment['threadID'],
-    #             'threadName': comment['threadName'],
-    #             'created_by': comment.get('userName', 'Unknown'),  # Corrected from 'username' to 'userName'
-    #             'count': comment.get('reply_count', 0),
-    #             'replies': []
-    #         }
-    #         comments_list.bpend(comment_dict)
-
-    #     return comments_list
-
-    # except mysql.connector.Error as err:
-    #     return jsonify({
-    #         'success': False,
-    #         'error': f"Error fetching comments from database: {err}"
-    #     }), 500
-
-    # finally:
-    #     cursor.close()
-    #     db.close()
-
-
 # Context processor to inject `user_logged_in` and `username` into templates
 @bp.context_processor
 def inject_user():
@@ -794,72 +733,102 @@ def delete_recipe(recipe_id):
 @bp.route('/community')
 @login_required
 def community():
-    if not 'user_id' in session:
+    if 'user_id' not in session:
         return redirect(url_for('routes.login'))
-    comments = get_threads_with_replies()
+    search_query = request.args.get('search', '')
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 10))
+
+    comments = get_threads_with_replies(search_query, page, per_page)
     return render_template('community.html', comments=comments)
 
 
-@bp.route('/get_replies/<string:thread_id>', methods=['GET'])
-@login_required
-def get_replies(thread_id):
+def get_threads_with_replies(search_query=None, page=1, per_page=10):
     db = get_mongo_db()
     try:
-        replies = db.thread.find_one({'_id': ObjectId(thread_id)}, {'replies': 1})
-        return jsonify({
-            'success': True,
-            'replies': replies['replies']
-        })
+        query = {}
+        if search_query:
+            query['threadName'] = {'$regex': search_query, '$options': 'i'}
+
+        skip = (page - 1) * per_page
+        threads = db.thread.find(query).skip(skip).limit(per_page)
+
+        comment_list = []
+        for thread in threads:
+            comment = {
+                'threadID': str(thread['_id']),
+                'threadName': thread['threadName'],
+                'created_by': thread['created_by'],
+                'created_by_username': thread['created_by_username'],
+                'replies': thread['replies'],
+                'count': len(thread['replies'])
+            }
+            comment_list.append(comment)
+        return comment_list
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f"Error fetching replies from database: {e}"
-        }), 500
+        flash(f"Error fetching comments from database: {e}", 'error')
+        return redirect(url_for('routes.community'))
+
+
+@bp.route('/replies/<thread_id>', methods=['GET'])
+@login_required
+def get_replies(thread_id):
+    if not 'user_id' in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    db = get_mongo_db()
+    try:
+        thread = db.thread.find_one({'_id': ObjectId(thread_id)})
+        if thread:
+            replies = thread.get('replies', [])
+            return jsonify({'replies': replies}), 200
+        else:
+            return jsonify({'error': 'Thread not found'}), 404
+    except Exception as e:
+        return jsonify({'error': f'Error fetching replies: {e}'}), 500
+
+
+def validate_comment_data(data):
+    return data and len(data.get('comment', '')) > 0
 
 
 @bp.route('/add_comment', methods=['POST'])
 @login_required
 def add_comment():
     if not 'user_id' in session:
-        return jsonify({'success': False, 'error': 'You need to be logged in to comment'}), 401
+        flash('You need to be logged in to comment', 'error')
+        return redirect(url_for('routes.login'))
 
     db = get_mongo_db()
-
     data = request.get_json()
-    comment_text = data.get('comment')
 
+    if not validate_comment_data(data):
+        flash('Invalid data', 'error')
+        return redirect(url_for('routes.community'))
+
+    comment_text = data['comment']
     try:
-        if comment_text:
-            db.thread.insert_one({
-                'threadName': comment_text,
-                'created_by': session.get('user_id'),
-                'created_by_username': session.get('username'),
-                'replies': [],
-            })
-
-            return jsonify({
-                'success': True,
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'Invalid data'
-            }), 400
+        db.thread.insert_one({
+            'threadName': comment_text,
+            'created_by': session.get('user_id'),
+            'created_by_username': session.get('username'),
+            'replies': [],
+        })
+        flash('Comment added successfully', 'success')
+        return redirect(url_for('routes.community'))
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f"Error inserting into database: {e}"
-        }), 500
+        flash(f"Error inserting into database: {e}", 'error')
+        return redirect(url_for('routes.community'))
 
 
 @bp.route('/add_reply', methods=['POST'])
 @login_required
 def add_reply():
-    if not 'user_id' in session:
-        return jsonify({'success': False, 'error': 'You need to be logged in to reply'}), 401
+    if 'user_id' not in session:
+        flash('You need to be logged in to reply', 'error')
+        return redirect(url_for('routes.login'))
 
     db = get_mongo_db()
-
     data = request.get_json()
     comment_index = data.get('comment_index')
     reply_text = data.get('reply')
@@ -871,20 +840,14 @@ def add_reply():
                 {'_id': ObjectId(comment_index)},
                 {'$push': {'replies': {'userID': user_id, 'user': session.get('username'), 'reply': reply_text}}}
             )
-            return jsonify({
-                'success': True,
-                'reply': {'user': session.get('username'), 'reply': reply_text}
-            })
+            flash('Reply added successfully', 'success')
+            return redirect(url_for('routes.community'))
         else:
-            return jsonify({
-                'success': False,
-                'error': 'Invalid data'
-            }), 400
+            flash('Invalid data', 'error')
+            return redirect(url_for('routes.community'))
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f"Error inserting into database: {e}"
-        }), 500
+        flash(f"Error inserting into database: {e}", 'error')
+        return redirect(url_for('routes.community'))
 
 
 @bp.route('/add_rating', methods=['POST'])

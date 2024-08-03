@@ -112,66 +112,8 @@ section {
     margin: 5px 0;
 }
 
-.replybutton {
-    color: white;
-    background-color: black;
-    border: none;
-    text-align: center;
-    display: inline-block;
-    padding: 7px 12px;
-    margin: 4px 2px;
-    border-radius: 8px;
-    margin-left: auto;
-}
-
-.submitbutton {
-    color: white;
-    background-color: black;
-    border: none;
-    text-align: center;
-    display: inline-block;
-    padding: 7px 12px;
-    border-radius: 8px;
-    margin: auto;
-}
-
 .reply-container {
     max-height: 300px;
     overflow-y: auto;
     margin-bottom: 15px;
-}
-
-textarea {
-    width: 100%;
-    padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    margin-bottom: 10px;
-    resize: vertical;
-}
-
-/* Add Comment Modal Styles */
-#addCommentModal .modal-content {
-    justify-content: center;
-    background-color: #fefefe;
-    margin: 5% auto;
-    padding: 20px;
-    border: 1px solid #888;
-    width: 70%;
-    max-width: 500px;
-    border-radius: 10px;
-}
-
-#addCommentModal .close {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-}
-
-#addCommentModal .close:hover,
-#addCommentModal .close:focus {
-    color: black;
-    text-decoration: none;
-    cursor: pointer;
 }
