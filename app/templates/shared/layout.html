@@ -14,12 +14,12 @@
     <!-- Font Awesome-->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <!-- Custom CSS-->
-    <link rel="stylesheet" type="text/css" href='/static/style.css'/>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}"/>
 </head>
 
 <body>
 <nav class="navbar navbar-expand-lg bg-dark border-bottom" data-bs-theme="dark">
-    <div class="container-fluid" style="width: 80%">
+    <div class="container-fluid" style="width: 85%">
         <a class="navbar-brand" style="font-weight: bold;" href="/">RecipeGenie</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown"
                 aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
@@ -50,7 +50,7 @@
             </button>
             <ul class="dropdown-menu">
                 {% if user_logged_in %}
-                <li><span class="dropdown-header">Welcome, {{ username }}</span></li>
+                <li><span class="dropdown-header text-light">Welcome, {{ username }}</span></li>
                 <li><a class="dropdown-item" href="/profile"><i class="fas fa-user"></i> My Profile</a></li>
                 <li><a class="dropdown-item" href="/my_recipes"><i class="fas fa-scroll"></i> My Recipes</a></li>
                 <li><a class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#logoutModal"><i
@@ -97,14 +97,13 @@
     </div>
 </div>
 
-<div class="mt-5">
+<div class="container-fluid mt-5">
     {% block content %}{% endblock %}
 </div>
 
 
 <!-- Bootstrap JS -->
-<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
-        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+<script src="https://code.jquery.com/jquery-3.7.1.js" integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4="
         crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
         integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
