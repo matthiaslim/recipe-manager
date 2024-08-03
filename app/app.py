@@ -1,11 +1,12 @@
 import math
 import os
-
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_paginate import Pagination, get_page_parameter
 import mysql.connector
+import redis
+import os
 from bcrypt import hashpw, gensalt, checkpw
-from db import get_db
+from db import get_db, get_redis
 from config import Config
 from functools import wraps
 
@@ -487,6 +488,52 @@ def get_recipe_details(recipe_id):
         cursor.close()
         db.close()
 
+@app.route('/save_favorite', methods=['POST'])
+@login_required
+def save_favorite():
+    user_id = session.get('user_id')
+    data = request.get_json()
+    recipe_id = data.get('recipe_id')
+
+    if not user_id or not recipe_id:
+        return jsonify({'success': False, 'message': 'Invalid data'})
+
+    try:
+        redis_db = get_redis()
+        # Use a Redis set to store favorite recipes for each user
+        redis_db.sadd(f'user:{user_id}:favorites', recipe_id)
+        return jsonify({'success': True, 'message': 'Recipe added to favorites'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/my_favourites')
+@login_required
+def my_favourites():
+    user_id = session.get('user_id')
+    if not user_id:
+        flash('You need to be logged in to view your favorite recipes!', 'danger')
+        return redirect(url_for('login'))
+
+    try:
+        redis_db = get_redis()
+        # Fetch favorite recipe IDs from Redis
+        favorite_recipe_ids = redis_db.smembers(f'user:{user_id}:favorites')
+        favorite_recipe_ids = [int(recipe_id) for recipe_id in favorite_recipe_ids]
+
+        # Fetch recipe details from the database
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        if favorite_recipe_ids:
+            format_strings = ','.join(['%s'] * len(favorite_recipe_ids))
+            cursor.execute(f"SELECT * FROM recipes WHERE recipeID IN ({format_strings})", tuple(favorite_recipe_ids))
+            recipes = cursor.fetchall()
+        else:
+            recipes = []
+
+        return render_template('my_favourites.html', recipes=recipes)
+    except Exception as e:
+        flash(f'Error fetching favorite recipes: {str(e)}', 'danger')
+        return redirect(url_for('index'))
 
 # My Recipes Page
 @app.route('/my_recipes', methods=['GET', 'POST'])
