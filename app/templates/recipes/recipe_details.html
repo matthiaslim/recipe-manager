@@ -10,7 +10,16 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col">
-                <h1>{{ recipe.recipeName }}</h1>
+                <h1>
+                    {{ recipe.recipeName }}
+                    {% if username and username!=recipe.username %}
+                    <form action="/save_favourite" method="POST" class="d-inline">
+                        <button type="submit" id="favoriteButton" class="btn btn-outline-primary btn-sm ml-2">
+                            <i class="fa fa-heart"></i> Favorite
+                        </button>
+                    </form>
+                    {% endif %}
+                </h1>
                 <p class="lead">{{ recipe.description }}</p>
                 <p>
                     <span class="font-weight-bold">Average Rating:</span> {{ recipe.averageRating }} ({{

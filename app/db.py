@@ -2,6 +2,7 @@ import mysql.connector
 from flask import current_app, g
 from flask.cli import with_appcontext
 import click
+import redis
 
 
 def get_db():
@@ -20,6 +21,20 @@ def close_db(e=None):
     if db is not None:
         db.close()
 
+def get_redis():
+    if 'redis' not in g:
+        g.redis = redis.StrictRedis(
+            host=current_app.config['REDIS_HOST'],
+            port=current_app.config['REDIS_PORT'],
+            db=current_app.config['REDIS_DB'],
+            decode_responses=True
+        )
+    return g.redis
+
+def close_redis(e=None):
+    redis_db = g.pop('redis', None)
+    if redis_db is not None:
+        redis_db.close()
 
 def init_db():
     db = get_db()
@@ -38,4 +53,5 @@ def init_db_command():
 
 def init_app(app):
     app.teardown_appcontext(close_db)
+    app.teardown_appcontext(close_redis)
     app.cli.add_command(init_db_command)
