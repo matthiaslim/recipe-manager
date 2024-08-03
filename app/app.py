@@ -121,6 +121,16 @@ def load_searches():
         key = f'previous_searches:{user_id}'
         searches = r.lrange(key, 0, -1)
         return jsonify([search for search in searches])
+    
+@app.route('/clear_searches', methods=['POST'])
+def clear_searches():
+    user_id = session.get('user_id')
+    if user_id:
+        r = get_redis()
+        key = f'previous_searches:{user_id}'
+        r.delete(key)  # Delete the key and its associated data
+    return '', 204
+
 
 
 # Login
@@ -476,7 +486,7 @@ def get_recipe_details(recipe_id):
             ''', (recipe_id,))
         ratings = cursor.fetchall()
 
-        # Check if the recipe is favorited by the current user
+        # Check if the recipe is favourited by the current user
         is_favourited = False
         if user_id:
             redis_db = get_redis()
@@ -510,14 +520,14 @@ def save_favourite():
 
     try:
         redis_db = get_redis()
-        # Check if the recipe is already favorited
+        # Check if the recipe is already favourited
         if redis_db.sismember(f'user:{user_id}:favourites', recipe_id):
-            # If already favorited, remove it
+            # If already favourited, remove it
             redis_db.srem(f'user:{user_id}:favourites', recipe_id)
             flash('Recipe removed from favourites!', 'success')
             return jsonify({'success': True, 'message': 'Recipe removed from favourites'})
         else:
-            # If not favorited, add it
+            # If not favourited, add it
             redis_db.sadd(f'user:{user_id}:favourites', recipe_id)
             flash('Recipe added to favourites!', 'success')
             return jsonify({'success': True, 'message': 'Recipe added to favourites'})
