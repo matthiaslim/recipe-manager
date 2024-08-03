@@ -1,10 +1,10 @@
 {% extends "shared/layout.html" %}
 
-{% block title %}My Favorite Recipes{% endblock %}
+{% block title %}My Favourite Recipes{% endblock %}
 
 {% block content %}
 <div class="container-fluid" style="width: 80%">
-    <h1 class="text-center mb-3">My Favorite Recipes</h1>
+    <h1 class="text-center mb-3">My Favourite Recipes</h1>
     <!-- Search Form -->
     <form id="searchForm" class="form-inline mb-3" method="GET" action="{{ url_for('my_favourites') }}">
         <div class="row">
@@ -21,10 +21,10 @@
     </form>
     {% if recipes|length == 0 %}
     <div class="container-fluid">
-        <a>No favorite recipes found</a>
+        <a>No favourite recipes found</a>
     </div>
     {% else %}
-    <div id="myFavoriteRecipeContainer" class="table-responsive">
+    <div id="myFavouriteRecipeContainer" class="table-responsive">
         <table class="table table-bordered">
             <thead class="thead-dark">
             <tr>
@@ -90,10 +90,10 @@
                 .then(html => {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
-                    const newContent = doc.querySelector('#myFavoriteRecipeContainer').innerHTML;
+                    const newContent = doc.querySelector('#myFavouriteRecipeContainer').innerHTML;
                     const newPagination = doc.querySelector('.d-flex').innerHTML;
 
-                    document.querySelector('#myFavoriteRecipeContainer').innerHTML = newContent;
+                    document.querySelector('#myFavouriteRecipeContainer').innerHTML = newContent;
                     document.querySelector('.d-flex').innerHTML = newPagination;
 
                     // Re-attach event listeners to new pagination links
@@ -116,10 +116,10 @@
                 .then(html => {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
-                    const newContent = doc.querySelector('#myFavoriteRecipeContainer').innerHTML;
+                    const newContent = doc.querySelector('#myFavouriteRecipeContainer').innerHTML;
                     const newPagination = doc.querySelector('.d-flex').innerHTML;
 
-                    document.querySelector('#myFavoriteRecipeContainer').innerHTML = newContent;
+                    document.querySelector('#myFavouriteRecipeContainer').innerHTML = newContent;
                     document.querySelector('.d-flex').innerHTML = newPagination;
 
                     // Re-attach event listeners to new pagination links

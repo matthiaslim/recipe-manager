@@ -172,7 +172,7 @@
         // Update the display when the range input value changes
         ratingInput.addEventListener('input', updateRatingDisplay);
 
-        // Handle the favorite form submission
+        // Handle the favourite form submission
         const favouriteForm = document.getElementById('favouriteForm');
 
         if (favouriteForm) {
@@ -191,7 +191,7 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            location.reload();  // Reload the page to update the favorite status
+                            location.reload();  // Reload the page to update the favourite status
                         } else {
                             alert(data.message);
                         }
