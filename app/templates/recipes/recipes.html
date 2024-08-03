@@ -1,0 +1,108 @@
+{% extends "shared/layout.html" %}
+
+{% block title %}Discover Recipes{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid" style="width: 80%;">
+    <h1 class="text-center">Discover Recipes</h1>
+    <form id="searchForm" action="{{ url_for('get_recipes') }}" method="GET">
+        <div class="row">
+            <div class="col-auto">
+                <label for="searchRecipes" class="visually-hidden">Search Recipes</label>
+                <input id="searchRecipes" list="previousSearches" class="form-control" type="text"
+                       placeholder="Search Recipes.." name="search" value="{{ search_term }}">
+                {% if user_logged_in %}
+                <datalist id="previousSearches">
+                    <!-- Options will be dynamically loaded here -->
+                </datalist>
+                {% endif %}
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-outline-success">Search</button>
+            </div>
+        </div>
+    </form>
+    <div class="row">
+        <div class="container-fluid text-end">
+            {% if user_logged_in %}
+            <a class="btn btn-dark" href="{{ url_for('create_recipe') }}"><i class="fas fa-plus"></i>
+                New Recipe</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid text-center" id="recipesContainer">
+    <table id="recipeTable" class="table table-bordered table-hover">
+        <thead class="thead-dark">
+        <tr>
+            <th>Title</th>
+            <th>Description</th>
+            <th>Created By</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for recipe in recipes %}
+        <tr>
+            <td>{{ recipe.recipeName }}</td>
+            <td>{{ recipe.description }}</td>
+            <td>{{ recipe.username }}</td>
+            <td>
+                <a href="{{ url_for('get_recipe_details', recipe_id=recipe.recipeID) }}"
+                   class="btn btn-primary btn-sm">More Details</a>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Pagination Controls -->
+    <div class="d-flex justify-content-center">
+        {{ pagination.links }}
+    </div>
+</div>
+<p class="text-center">
+    <button class="btn btn-dark" type="button" data-bs-toggle="collapse" data-bs-target="#searchIngredientsCollapse"
+            aria-expanded="false" aria-controls="collapseExample">
+        Search by Ingredients
+    </button>
+</p>
+
+<!-- Search By Ingredients Form -->
+<div class="container-fluid collapse" id="searchIngredientsCollapse" style="width: 60%">
+    <form class="row" action="{{ url_for('search_by_ingredient') }}" method="POST">
+        <div class="col-12">
+            <label for="searchIngredients">Enter Ingredients (comma separated)</label>
+            <textarea id="searchIngredients" class="form-control" name="ingredients" rows="4"
+                      placeholder="Enter ingredients here..."></textarea>
+        </div>
+        <div class="col-12">
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="search_option" id="only_listed" value="only_listed"
+                       checked>
+                <label class="form-check-label" for="only_listed">
+                    Only Ingredients Listed
+                </label>
+            </div>
+        </div>
+        <div class="col-12">
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="search_option" id="with_more" value="with_more">
+                <label class="form-check-label" for="with_more">
+                    Ingredients Listed and More
+                </label>
+            </div>
+        </div>
+        <div class="col-12">
+            <button class="btn btn-dark mt-3" type="submit">Search</button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='recipe.js') }}"></script>
+{% endblock %}

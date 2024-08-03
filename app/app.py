@@ -1,7 +1,9 @@
+import math
+import os
+
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_paginate import Pagination, get_page_parameter
 import mysql.connector
-import os
 from bcrypt import hashpw, gensalt, checkpw
 from db import get_db
 from config import Config
@@ -283,29 +285,40 @@ def get_recipes():
     cursor = db.cursor(dictionary=True)
 
     try:
-
-        # Get current page number
+        # Get current page number and search term
         page = request.args.get(get_page_parameter(), type=int, default=1)
+        search_term = request.args.get('search', '')
         per_page = 5  # Number of recipes per page
         offset = (page - 1) * per_page
 
+        # Build the query dynamically based on the search term
+        query_params = []
+        if search_term:
+            search_query = "WHERE r.recipeName LIKE %s"
+            query_params.append(f"%{search_term}%")
+        else:
+            search_query = ""
+
         # Fetch total number of recipes
-        cursor.execute('SELECT COUNT(*) as total FROM Recipe')
+        query = f"SELECT COUNT(*) as total FROM Recipe r {search_query}"
+        cursor.execute(query, query_params)
         total = cursor.fetchone()['total']
 
         # Fetch recipes for the current page
-        cursor.execute(
-            'SELECT r.recipeID, r.recipeName, r.description, u.username '
-            'FROM Recipe r JOIN User u ON r.created_by = u.userID '
-            'LIMIT %s OFFSET %s',
-            (per_page, offset)
+        query = (
+            f"SELECT r.recipeID, r.recipeName, r.description, u.username "
+            f"FROM Recipe r JOIN User u ON r.created_by = u.userID "
+            f"{search_query} LIMIT %s OFFSET %s"
         )
+        query_params.extend([per_page, offset])
+        cursor.execute(query, query_params)
         recipes = cursor.fetchall()
 
         # Create pagination object
-        pagination = Pagination(page=page, total=total, per_page=per_page, css_framework='bootstrap4')
+        pagination = Pagination(page=page, total=total, per_page=per_page, css_framework='bootstrap5',
+                                search=search_term, record_name='recipes')
 
-        return render_template('recipes.html', recipes=recipes, pagination=pagination)
+        return render_template('recipes/recipes.html', recipes=recipes, pagination=pagination, search_term=search_term)
 
     except mysql.connector.Error as err:
         flash(f"Database error: {err}", 'danger')
@@ -315,14 +328,21 @@ def get_recipes():
         db.close()
 
 
-@app.route('/search_by_ingredient', methods=['POST'])
+@app.route('/search_by_ingredient', methods=['GET', 'POST'])
 def search_by_ingredient():
     db = get_db()
     cursor = db.cursor(dictionary=True)
     try:
-        # Get input data from form
-        ingredients_input = request.form.get('ingredients', '').strip()
-        search_option = request.form.get('search_option', 'only_listed')
+        if request.method == 'POST':
+            # Get input data from form
+            ingredients_input = request.form.get('ingredients', '').strip()
+            search_option = request.form.get('search_option', 'only_listed')
+            page = 1  # Start with the first page for new search
+        else:
+            # For GET requests, retrieve search parameters from query string
+            ingredients_input = request.args.get('ingredients', '').strip()
+            search_option = request.args.get('search_option', 'only_listed')
+            page = int(request.args.get('page', 1))
 
         # Split ingredients_input into a list of ingredients
         ingredients_list = [ingredient.strip().lower() for ingredient in ingredients_input.split(',')]
@@ -338,10 +358,26 @@ def search_by_ingredient():
                 WHERE {}
                 GROUP BY r.recipeID
                 HAVING COUNT(DISTINCT i.ingredientID) = {}
+                LIMIT %s OFFSET %s
             """.format(' AND '.join(['LOWER(i.ingredientName) LIKE %s'] * len(ingredients_list)), len(ingredients_list))
 
             # Adjust ingredients_list for LIKE operation
             ingredients_list = ['%' + ingredient + '%' for ingredient in ingredients_list]
+
+            # Calculate the total number of recipes
+            count_query = """
+                SELECT COUNT(DISTINCT r.recipeID) as total
+                FROM Recipe r
+                JOIN Recipe_Ingredient ri ON r.recipeID = ri.recipeID
+                JOIN Ingredient i ON ri.ingredientID = i.ingredientID
+                WHERE {}
+                GROUP BY r.recipeID
+                HAVING COUNT(DISTINCT i.ingredientID) = {}
+            """.format(' AND '.join(['LOWER(i.ingredientName) LIKE %s'] * len(ingredients_list)), len(ingredients_list))
+
+            cursor.execute(count_query, ingredients_list)
+            total_recipes_result = cursor.fetchall()
+            total_recipes = len(total_recipes_result)
 
         elif search_option == 'with_more':
             # Search for recipes containing any of the listed ingredients
@@ -351,20 +387,40 @@ def search_by_ingredient():
                 JOIN Recipe_Ingredient ri ON r.recipeID = ri.recipeID
                 JOIN Ingredient i ON ri.ingredientID = i.ingredientID
                 WHERE {}
+                LIMIT %s OFFSET %s
             """.format(' OR '.join(['LOWER(i.ingredientName) LIKE %s'] * len(ingredients_list)))
 
             # Adjust ingredients_list for LIKE operation
             ingredients_list = ['%' + ingredient + '%' for ingredient in ingredients_list]
 
-        # Execute the query with adjusted ingredients_list
-        cursor.execute(select_recipes_query, ingredients_list)
+            # Calculate the total number of recipes
+            count_query = """
+                SELECT COUNT(DISTINCT r.recipeID) as total
+                FROM Recipe r
+                JOIN Recipe_Ingredient ri ON r.recipeID = ri.recipeID
+                JOIN Ingredient i ON ri.ingredientID = i.ingredientID
+                WHERE {}
+            """.format(' OR '.join(['LOWER(i.ingredientName) LIKE %s'] * len(ingredients_list)))
+
+            cursor.execute(count_query, ingredients_list)
+            total_recipes = cursor.fetchone()['total']
+
+        # Calculate the total number of pages
+        per_page = 5  # Number of recipes per page
+        total_pages = math.ceil(total_recipes / per_page)
+
+        # Execute the query with adjusted ingredients_list and pagination
+        params = ingredients_list + [per_page, (page - 1) * per_page]
+        cursor.execute(select_recipes_query, params)
         recipes = cursor.fetchall()
 
         if not recipes:
             flash('No recipes found for the specified ingredients.', 'info')
-            return render_template('search_by_ingredient.html', recipes=[])
+            return render_template('recipes/search_by_ingredient.html', recipes=[], page=page, total_pages=total_pages,
+                                   ingredients=ingredients_input, search_option=search_option)
 
-        return render_template('search_by_ingredient.html', recipes=recipes)
+        return render_template('recipes/search_by_ingredient.html', recipes=recipes, page=page, total_pages=total_pages,
+                               ingredients=ingredients_input, search_option=search_option)
 
     except mysql.connector.Error as err:
         flash(f"Database error: {err}", 'danger')
@@ -419,7 +475,8 @@ def get_recipe_details(recipe_id):
             ''', (recipe_id,))
         ratings = cursor.fetchall()
 
-        return render_template('recipe_details.html', recipe=recipe, ingredients=ingredients, directions=directions,
+        return render_template('recipes/recipe_details.html', recipe=recipe, ingredients=ingredients,
+                               directions=directions,
                                ratings=ratings)
 
     except mysql.connector.Error as err:
@@ -475,7 +532,7 @@ def my_recipes():
         pagination = Pagination(page=page, total=total_count, per_page=per_page, search=search_term,
                                 css_framework='bootstrap4')
 
-        return render_template('my_recipes.html', recipes=recipes, page=page, total_count=total_count,
+        return render_template('recipes/my_recipes.html', recipes=recipes, page=page, total_count=total_count,
                                total_pages=total_pages, search_term=search_term, pagination=pagination)
 
     except (mysql.connector.Error, KeyError, TypeError) as err:
@@ -559,7 +616,7 @@ def create_recipe():
             db.close()
 
     # Render the form if it's a GET request or if there was an error
-    return render_template('add_recipe.html')
+    return render_template('recipes/add_recipe.html')
 
 
 @app.route('/my_recipes/edit/<int:recipe_id>', methods=['GET', 'POST'])
@@ -660,7 +717,8 @@ def edit_recipe(recipe_id):
             ''', (recipe_id,))
             ingredients = cursor.fetchall()
 
-            return render_template('edit_recipe.html', recipe=recipe, directions=directions, ingredients=ingredients)
+            return render_template('recipes/edit_recipe.html', recipe=recipe, directions=directions,
+                                   ingredients=ingredients)
 
     except mysql.connector.Error as err:
         flash(f"Database error: {err}", 'danger')
@@ -709,6 +767,7 @@ def delete_recipe(recipe_id):
 
 
 # Community
+@login_required
 @app.route('/community')
 def community():
     global comments
@@ -716,6 +775,7 @@ def community():
     return render_template('community.html', comments=comments)
 
 
+@login_required
 @app.route('/get_replies/<int:thread_id>', methods=['GET'])
 def get_replies(thread_id):
     db = get_db()
@@ -744,6 +804,7 @@ def get_replies(thread_id):
         cursor.close()
 
 
+@login_required
 @app.route('/add_comment', methods=['POST'])
 def add_comment():
     db = get_db()
@@ -794,6 +855,7 @@ def add_comment():
         cursor.close()
 
 
+@login_required
 @app.route('/add_reply', methods=['POST'])
 def add_reply():
     db = get_db()
@@ -887,7 +949,6 @@ def add_rating():
     finally:
         cursor.close()
         db.close()
-
 
 
 @app.route('/get_ratings/<int:recipeID>', methods=['GET'])
