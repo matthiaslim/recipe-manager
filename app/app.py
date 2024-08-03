@@ -1,5 +1,6 @@
 import math
 import os
+
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_paginate import Pagination, get_page_parameter
 import mysql.connector
@@ -13,6 +14,7 @@ from bson import ObjectId
 app = Flask(__name__)
 app.config.from_object(Config)  # Load configuration from config.py
 app.secret_key = os.urandom(24)  # secret key for session management
+
 
 def login_required(f):
     @wraps(f)
@@ -91,10 +93,12 @@ def get_threads_with_replies(search_query=None):
 def inject_user():
     return dict(user_logged_in='username' in session, username=session.get('username'))
 
+
 # Index
 @app.route('/')
 def index():
     return render_template('index.html')
+
 
 @app.route('/save_search', methods=['POST'])
 def save_search():
@@ -108,6 +112,7 @@ def save_search():
         r.ltrim(key, 0, 9)
     return '', 204
 
+
 @app.route('/load_searches', methods=['GET'])
 def load_searches():
     user_id = session.get('user_id')
@@ -116,54 +121,6 @@ def load_searches():
         key = f'previous_searches:{user_id}'
         searches = r.lrange(key, 0, -1)
         return jsonify([search for search in searches])
-    
-# # Favourites
-# @app.route('/favourites')
-# def favourites():
-#     db = get_db()
-#     cursor = db.cursor(dictionary=True)
-#     user_id = session.get('user_id')
-
-#     try:
-#         if request.method == 'POST':
-#             page = request.args.get('page', 1, type=int)
-#         else:
-#             page = request.args.get('page', 1, type=int)
-
-#         per_page = 7  # Number of recipes per page
-#         offset = (page - 1) * per_page
-
-#         # SQL query to fetch recipes with optional search filter
-#         query = 'SELECT * FROM Recipe WHERE created_by = %s'
-#         params = [user_id]
-
-#         query += ' LIMIT %s OFFSET %s'
-#         params.extend([per_page, offset])
-
-#         cursor.execute(query, params)
-#         recipes = cursor.fetchall()
-
-#         # Get the total count of recipes created by the user
-#         cursor.execute('SELECT COUNT(*) as count FROM Recipe WHERE created_by = %s', (user_id,))
-#         total_count = cursor.fetchone()['count']
-
-#         # Calculate the total number of pages
-#         total_pages = (total_count + per_page - 1) // per_page
-
-#         # Create pagination object
-#         pagination = Pagination(page=page, total=total_count, per_page=per_page,
-#                                 css_framework='bootstrap4')
-
-#         return render_template('favourites.html', recipes=recipes, page=page, total_count=total_count,
-#                                total_pages=total_pages, pagination=pagination)
-
-#     except (mysql.connector.Error, KeyError, TypeError) as err:
-#         flash(f"Database error: {err}", 'danger')
-#         return redirect(url_for('index'))
-
-#     finally:
-#         cursor.close()
-#         db.close()
 
 
 # Login
@@ -537,6 +494,7 @@ def get_recipe_details(recipe_id):
         cursor.close()
         db.close()
 
+
 @app.route('/save_favourite', methods=['POST'])
 @login_required
 def save_favourite():
@@ -555,13 +513,13 @@ def save_favourite():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
+
 @app.route('/favourites')
 @login_required
 def my_favourites():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
     user_id = session.get('user_id')
-    if not user_id:
-        flash('You need to be logged in to view your favourite recipes!', 'danger')
-        return redirect(url_for('login'))
 
     try:
         redis_db = get_redis()
@@ -570,25 +528,29 @@ def my_favourites():
         favourite_recipe_ids = [int(recipe_id) for recipe_id in favourite_recipe_ids]
 
         # Fetch recipe details from the database
-        db = get_db()
-        cursor = db.cursor(dictionary=True)
+        recipes = []
+        total = 0
         if favourite_recipe_ids:
             format_strings = ','.join(['%s'] * len(favourite_recipe_ids))
-            cursor.execute(f"SELECT * FROM recipe WHERE recipeID IN ({format_strings})", tuple(favourite_recipe_ids))
+            query = f"SELECT r.recipeID, r.recipeName, r.description, u.username " \
+                    f"FROM Recipe r JOIN User u ON r.created_by = u.userID " \
+                    f"WHERE r.recipeID IN ({format_strings})"
+            cursor.execute(query, tuple(favourite_recipe_ids))
             recipes = cursor.fetchall()
 
             # Fetch total number of favourite recipes
-            cursor.execute(f"SELECT COUNT(*) as total FROM Recipe WHERE recipeID IN ({format_strings})", tuple(favourite_recipe_ids))
+            cursor.execute(f"SELECT COUNT(*) as total FROM Recipe WHERE recipeID IN ({format_strings})",
+                           tuple(favourite_recipe_ids))
             total = cursor.fetchone()['total']
-        else:
-            recipes = []
-            total = 0
 
         # Create pagination object
+        page = request.args.get(get_page_parameter(), type=int, default=1)
+        per_page = 5  # Number of recipes per page
         pagination = Pagination(page=page, total=total, per_page=per_page, css_framework='bootstrap5')
         pagination.record_name = 'favourites'
 
-        return render_template('my_favourites.html', recipes=recipes, pagination=pagination)
+        return render_template('recipes/my_favourites.html', recipes=recipes, pagination=pagination)
+
     except Exception as e:
         flash(f'Error fetching favourite recipes: {str(e)}', 'danger')
         return redirect(url_for('index'))
@@ -828,12 +790,13 @@ def get_replies(thread_id):
             'error': f"Error fetching replies from database: {e}"
         }), 500
 
+
 @app.route('/add_comment', methods=['POST'])
 @login_required
 def add_comment():
     if not 'user_id' in session:
         return jsonify({'success': False, 'error': 'You need to be logged in to comment'}), 401
-    
+
     db = get_mongo_db()
 
     data = request.get_json()
@@ -862,12 +825,13 @@ def add_comment():
             'error': f"Error inserting into database: {e}"
         }), 500
 
+
 @app.route('/add_reply', methods=['POST'])
 @login_required
 def add_reply():
     if not 'user_id' in session:
         return jsonify({'success': False, 'error': 'You need to be logged in to reply'}), 401
-    
+
     db = get_mongo_db()
 
     data = request.get_json()
@@ -895,6 +859,7 @@ def add_reply():
             'success': False,
             'error': f"Error inserting into database: {e}"
         }), 500
+
 
 @app.route('/add_rating', methods=['POST'])
 def add_rating():

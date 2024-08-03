@@ -22,6 +22,7 @@ def close_db(e=None):
     if db is not None:
         db.close()
 
+
 def get_redis():
     if 'redis' not in g:
         g.redis = redis.StrictRedis(
@@ -32,10 +33,12 @@ def get_redis():
         )
     return g.redis
 
+
 def close_redis(e=None):
     redis_db = g.pop('redis', None)
     if redis_db is not None:
         redis_db.close()
+
 
 def init_db():
     db = get_db()

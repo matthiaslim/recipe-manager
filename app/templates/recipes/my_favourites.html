@@ -3,23 +3,22 @@
 {% block title %}My Favorite Recipes{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="container-fluid text-center">
-        <h2>My Favorite Recipes</h2>
-        <!-- Search Form -->
-        <form id="searchForm" class="form-inline mb-3" method="GET" action="{{ url_for('my_favourites') }}">
-            <div class="form-row">
-                <div class="col-auto">
-                    <input type="text" id="searchMyFavourites" class="form-control" name="search_term"
-                           style="min-width: 300px; width: auto;"
-                           placeholder="Search by name or description" aria-label="search" value="{{ search_term }}">
-                </div>
-                <div class="col-auto">
-                    <button type="submit" class="btn btn-outline-success ml-1">Search</button>
-                </div>
+<div class="container-fluid" style="width: 80%">
+    <h1 class="text-center mb-3">My Favorite Recipes</h1>
+    <!-- Search Form -->
+    <form id="searchForm" class="form-inline mb-3" method="GET" action="{{ url_for('my_favourites') }}">
+        <div class="row">
+            <div class="col-auto">
+                <label for="searchMyFavourites" class="visually-hidden">Search My Favourites</label>
+                <input type="text" id="searchMyFavourites" class="form-control" name="search_term"
+                       style="min-width: 300px; width: auto;"
+                       placeholder="Search by name or description" aria-label="search" value="{{ search_term }}">
             </div>
-        </form>
-    </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-outline-success ml-1">Search</button>
+            </div>
+        </div>
+    </form>
     {% if recipes|length == 0 %}
     <div class="container-fluid">
         <a>No favorite recipes found</a>
