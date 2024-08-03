@@ -1,19 +1,14 @@
 import math
-import os
-
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-from flask_paginate import Pagination, get_page_parameter
 import mysql.connector
-import os
+
+from .db import get_db, get_redis, get_mongo_db
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
+from flask_paginate import Pagination, get_page_parameter
 from bcrypt import hashpw, gensalt, checkpw
-from db import get_db, get_redis, get_mongo_db
-from config import Config
 from functools import wraps
 from bson import ObjectId
 
-app = Flask(__name__)
-app.config.from_object(Config)  # Load configuration from config.py
-app.secret_key = os.urandom(24)  # secret key for session management
+bp = Blueprint('routes', __name__)
 
 
 def login_required(f):
@@ -21,7 +16,7 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             flash('You need to be logged in to access this page!', 'danger')
-            return redirect(url_for('login'))
+            return redirect(url_for('routes.login'))
         return f(*args, **kwargs)
 
     return decorated_function
@@ -45,7 +40,7 @@ def get_threads_with_replies(search_query=None):
                 'replies': thread['replies'],
                 'count': len(thread['replies'])
             }
-            comment_list.append(comment)
+            comment_list.bpend(comment)
         return comment_list
     except Exception as e:
         return jsonify({
@@ -73,7 +68,7 @@ def get_threads_with_replies(search_query=None):
     #             'count': comment.get('reply_count', 0),
     #             'replies': []
     #         }
-    #         comments_list.append(comment_dict)
+    #         comments_list.bpend(comment_dict)
 
     #     return comments_list
 
@@ -89,18 +84,18 @@ def get_threads_with_replies(search_query=None):
 
 
 # Context processor to inject `user_logged_in` and `username` into templates
-@app.context_processor
+@bp.context_processor
 def inject_user():
     return dict(user_logged_in='username' in session, username=session.get('username'))
 
 
 # Index
-@app.route('/')
+@bp.route('/')
 def index():
     return render_template('index.html')
 
 
-@app.route('/save_search', methods=['POST'])
+@bp.route('/save_search', methods=['POST'])
 def save_search():
     term = request.json.get('term')
     user_id = session.get('user_id')
@@ -113,7 +108,7 @@ def save_search():
     return '', 204
 
 
-@app.route('/load_searches', methods=['GET'])
+@bp.route('/load_searches', methods=['GET'])
 def load_searches():
     user_id = session.get('user_id')
     if user_id:
@@ -121,8 +116,9 @@ def load_searches():
         key = f'previous_searches:{user_id}'
         searches = r.lrange(key, 0, -1)
         return jsonify([search for search in searches])
-    
-@app.route('/clear_searches', methods=['POST'])
+
+
+@bp.route('/clear_searches', methods=['POST'])
 def clear_searches():
     user_id = session.get('user_id')
     if user_id:
@@ -132,9 +128,8 @@ def clear_searches():
     return '', 204
 
 
-
 # Login
-@app.route('/login', methods=['GET', 'POST'])
+@bp.route('/login', methods=['GET', 'POST'])
 def login():
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -151,10 +146,10 @@ def login():
                 session['username'] = user['username']
                 session['user_id'] = user['userID']
                 flash('Login Successful!', 'success')
-                return redirect(url_for('index'))
+                return redirect(url_for('routes.index'))
             else:
                 flash('Invalid username or password. Please try again.', 'danger')
-                return redirect(url_for('login'))
+                return redirect(url_for('routes.login'))
 
         except mysql.connector.Error as err:
             flash(f"Database error: {err}", 'danger')
@@ -167,7 +162,7 @@ def login():
 
 
 # Register
-@app.route('/register', methods=['GET', 'POST'])
+@bp.route('/register', methods=['GET', 'POST'])
 def register():
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -180,7 +175,7 @@ def register():
         # If password does not match the confirmation
         if password != confirm_password:
             flash('Passwords do not match. Please try again.', 'danger')
-            return redirect(url_for('register'))
+            return redirect(url_for('routes.register'))
 
         salt = gensalt()  # Generate a random salt
         hashed_password = hashpw(password.encode(), salt)  # Hash the password
@@ -195,7 +190,7 @@ def register():
                 cursor.execute('INSERT INTO User (username, password) VALUES (%s, %s)', (username, hashed_password))
                 db.commit()
                 flash('Registration successful!', 'success')
-                return redirect(url_for('login'))
+                return redirect(url_for('routes.login'))
         except mysql.connector.Error as err:
             flash(f"Error: {err}", 'danger')
         finally:
@@ -206,16 +201,16 @@ def register():
 
 
 # Logout
-@app.route('/logout')
+@bp.route('/logout')
 def logout():
     session.pop('username', None)  # Remove username from session
     session.pop('user_id', None)
     flash('You have been logged out.', 'success')
-    return redirect(url_for('index'))
+    return redirect(url_for('routes.index'))
 
 
 # Profile
-@app.route('/profile')
+@bp.route('/profile')
 @login_required
 def profile():
     if 'user_id' in session:
@@ -242,11 +237,11 @@ def profile():
         finally:
             cursor.close()
             db.close()
-    return redirect(url_for('login'))
+    return redirect(url_for('routes.login'))
 
 
 # Change Password
-@app.route('/profile/change_password', methods=['GET', 'POST'])
+@bp.route('/profile/change_password', methods=['GET', 'POST'])
 @login_required
 def change_password():
     if 'user_id' in session:
@@ -269,7 +264,7 @@ def change_password():
                         cursor.execute('UPDATE User SET password = %s WHERE userID = %s', (hashed_password, user_id))
                         db.commit()
                         flash('Password updated successfully!', 'success')
-                        return redirect(url_for('profile'))
+                        return redirect(url_for('routes.profile'))
                     else:
                         flash('New passwords do not match. Please try again.', 'danger')
                 else:
@@ -283,12 +278,12 @@ def change_password():
 
         return render_template('change_password.html')
 
-    return redirect(url_for('login'))
+    return redirect(url_for('routes.login'))
 
 
 # Recipe CRUD
 # Get all recipes
-@app.route('/recipes', methods=['GET'])
+@bp.route('/recipes', methods=['GET'])
 def get_recipes():
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -304,7 +299,7 @@ def get_recipes():
         query_params = []
         if search_term:
             search_query = "WHERE r.recipeName LIKE %s"
-            query_params.append(f"%{search_term}%")
+            query_params.bpend(f"%{search_term}%")
         else:
             search_query = ""
 
@@ -338,7 +333,7 @@ def get_recipes():
         db.close()
 
 
-@app.route('/search_by_ingredient', methods=['GET', 'POST'])
+@bp.route('/search_by_ingredient', methods=['GET', 'POST'])
 def search_by_ingredient():
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -434,7 +429,7 @@ def search_by_ingredient():
 
     except mysql.connector.Error as err:
         flash(f"Database error: {err}", 'danger')
-        return redirect(url_for('get_recipes'))
+        return redirect(url_for('routes.get_recipes'))
 
     finally:
         cursor.close()
@@ -442,7 +437,7 @@ def search_by_ingredient():
 
 
 # Get Recipe
-@app.route('/recipes/<int:recipe_id>')
+@bp.route('/recipes/<int:recipe_id>')
 def get_recipe_details(recipe_id):
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -457,7 +452,7 @@ def get_recipe_details(recipe_id):
 
         if not recipe:
             flash('Recipe not found', 'danger')
-            return redirect(url_for('recipes'))
+            return redirect(url_for('routes.recipes'))
 
         # Get ingredients
         cursor.execute('''
@@ -498,19 +493,19 @@ def get_recipe_details(recipe_id):
 
     except mysql.connector.Error as err:
         flash(f"Error: {err}", 'danger')
-        return redirect(url_for('recipes'))
+        return redirect(url_for('routes.recipes'))
 
     finally:
         cursor.close()
         db.close()
 
 
-@app.route('/save_favourite', methods=['POST'])
+@bp.route('/save_favourite', methods=['POST'])
 @login_required
 def save_favourite():
-    if request.content_type != 'application/json':
-        return jsonify({'success': False, 'message': 'Content-Type must be application/json'}), 400
-    
+    if request.content_type != 'bplication/json':
+        return jsonify({'success': False, 'message': 'Content-Type must be bplication/json'}), 400
+
     user_id = session.get('user_id')
     data = request.get_json()
     recipe_id = data.get('recipe_id')
@@ -535,7 +530,7 @@ def save_favourite():
         return jsonify({'success': False, 'message': str(e)})
 
 
-@app.route('/favourites')
+@bp.route('/favourites')
 @login_required
 def my_favourites():
     db = get_db()
@@ -576,14 +571,14 @@ def my_favourites():
 
     except Exception as e:
         flash(f'Error fetching favourite recipes: {str(e)}', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('routes.index'))
     finally:
         cursor.close()
         db.close()
 
 
 # My Recipes Page
-@app.route('/my_recipes', methods=['GET'])
+@bp.route('/my_recipes', methods=['GET'])
 @login_required
 def my_recipes():
     db = get_db()
@@ -624,7 +619,7 @@ def my_recipes():
 
     except (mysql.connector.Error, KeyError, TypeError) as err:
         flash(f"Database error: {err}", 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('routes.index'))
 
     finally:
         cursor.close()
@@ -632,7 +627,7 @@ def my_recipes():
 
 
 # Add Recipe
-@app.route('/add_recipe', methods=['GET', 'POST'])
+@bp.route('/add_recipe', methods=['GET', 'POST'])
 @login_required
 def add_recipe():
     if request.method == 'POST':
@@ -671,7 +666,7 @@ def add_recipe():
 
             db.commit()
             flash('Recipe added successfully!', 'success')
-            return redirect(url_for('get_recipes'))
+            return redirect(url_for('routes.get_recipes'))
         except mysql.connector.Error as err:
             db.rollback()
             flash(f"Database error: {err}", 'danger')
@@ -682,7 +677,7 @@ def add_recipe():
     return render_template('recipes/edit_recipe.html', recipe=None, directions=[], ingredients=[])
 
 
-@app.route('/edit_recipe/<int:recipe_id>', methods=['GET', 'POST'])
+@bp.route('/edit_recipe/<int:recipe_id>', methods=['GET', 'POST'])
 @login_required
 def edit_recipe(recipe_id):
     db = get_db()
@@ -721,7 +716,7 @@ def edit_recipe(recipe_id):
 
             db.commit()
             flash('Recipe updated successfully!', 'success')
-            return redirect(url_for('get_recipes'))
+            return redirect(url_for('routes.get_recipes'))
         else:
             # Load recipe details for editing
             cursor.execute("SELECT * FROM Recipe WHERE recipeID = %s", (recipe_id,))
@@ -743,7 +738,7 @@ def edit_recipe(recipe_id):
 
     except mysql.connector.Error as err:
         flash(f"Database error: {err}", 'danger')
-        return redirect(url_for('get_recipes'))
+        return redirect(url_for('routes.get_recipes'))
 
     finally:
         cursor.close()
@@ -751,7 +746,7 @@ def edit_recipe(recipe_id):
 
 
 # Delete Recipe
-@app.route('/my_recipes/delete/<int:recipe_id>', methods=['POST'])
+@bp.route('/my_recipes/delete/<int:recipe_id>', methods=['POST'])
 @login_required
 def delete_recipe(recipe_id):
     db = get_db()
@@ -764,18 +759,18 @@ def delete_recipe(recipe_id):
 
         if not recipe:
             flash('Recipe not found.', 'danger')
-            return redirect(url_for('my_recipes'))
+            return redirect(url_for('routes.my_recipes'))
 
         if 'user_id' not in session or recipe['created_by'] != session['user_id']:
             flash('You are not authorized to delete this recipe.', 'danger')
-            return redirect(url_for('my_recipes'))
+            return redirect(url_for('routes.my_recipes'))
 
         # Delete the recipe
         cursor.execute('DELETE FROM Recipe WHERE recipeID = %s', (recipe_id,))
         db.commit()
 
         flash('Recipe deleted successfully!', 'success')
-        return redirect(url_for('my_recipes'))
+        return redirect(url_for('routes.my_recipes'))
 
     except (mysql.connector.Error, KeyError, TypeError) as err:
         flash(f"Error deleting recipe: {err}", 'danger')
@@ -784,21 +779,21 @@ def delete_recipe(recipe_id):
         cursor.close()
         db.close()
 
-    return redirect(url_for('my_recipes'))
+    return redirect(url_for('routes.my_recipes'))
 
 
 # Community
-@app.route('/community')
+@bp.route('/community')
 @login_required
 def community():
     if not 'user_id' in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('routes.login'))
     comments = get_threads_with_replies()
     return render_template('community.html', comments=comments)
 
 
+@bp.route('/get_replies/<string:thread_id>', methods=['GET'])
 @login_required
-@app.route('/get_replies/<string:thread_id>', methods=['GET'])
 def get_replies(thread_id):
     db = get_mongo_db()
     try:
@@ -814,7 +809,7 @@ def get_replies(thread_id):
         }), 500
 
 
-@app.route('/add_comment', methods=['POST'])
+@bp.route('/add_comment', methods=['POST'])
 @login_required
 def add_comment():
     if not 'user_id' in session:
@@ -849,7 +844,7 @@ def add_comment():
         }), 500
 
 
-@app.route('/add_reply', methods=['POST'])
+@bp.route('/add_reply', methods=['POST'])
 @login_required
 def add_reply():
     if not 'user_id' in session:
@@ -884,7 +879,7 @@ def add_reply():
         }), 500
 
 
-@app.route('/add_rating', methods=['POST'])
+@bp.route('/add_rating', methods=['POST'])
 def add_rating():
     user = session.get('username', 'Anonymous')
     user_id = session.get('user_id')
@@ -894,7 +889,7 @@ def add_rating():
 
     if not user_id or not recipe_id or not rating:
         flash('Missing required data', 'danger')
-        return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
+        return redirect(url_for('routes.get_recipe_details', recipe_id=recipe_id))
 
     db = get_db()
     cursor = db.cursor()
@@ -905,18 +900,18 @@ def add_rating():
         db.commit()
 
         flash("Rating successfully added", 'success')
-        return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
+        return redirect(url_for('routes.get_recipe_details', recipe_id=recipe_id))
 
     except mysql.connector.Error as err:
         flash(f"Database error: {err}", 'danger')
-        return redirect(url_for('get_recipe_details', recipe_id=recipe_id))
+        return redirect(url_for('routes.get_recipe_details', recipe_id=recipe_id))
 
     finally:
         cursor.close()
         db.close()
 
 
-@app.route('/get_ratings/<int:recipeID>', methods=['GET'])
+@bp.route('/get_ratings/<int:recipeID>', methods=['GET'])
 def get_ratings_by_recipe_id(recipeID):
     db = get_db()
     cursor = db.cursor()
@@ -939,7 +934,7 @@ def get_ratings_by_recipe_id(recipeID):
         cursor.close()
 
 
-@app.route('/update_rating/<int:rating_id>', methods=['PUT'])
+@bp.route('/update_rating/<int:rating_id>', methods=['PUT'])
 def update_rating(rating_id):
     db = get_db()
     cursor = db.cursor()
@@ -996,7 +991,7 @@ def update_rating(rating_id):
         cursor.close()
 
 
-@app.route('/delete_rating/<int:rating_id>', methods=['DELETE'])
+@bp.route('/delete_rating/<int:rating_id>', methods=['DELETE'])
 def delete_rating(rating_id):
     db = get_db()
     cursor = db.cursor()
@@ -1049,7 +1044,3 @@ def delete_rating(rating_id):
 
     finally:
         cursor.close()
-
-
-if __name__ == '__main__':
-    app.run(debug=True)

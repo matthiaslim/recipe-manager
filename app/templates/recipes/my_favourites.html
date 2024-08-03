@@ -6,7 +6,7 @@
 <div class="container-fluid" style="width: 80%">
     <h1 class="text-center mb-3">My Favourite Recipes</h1>
     <!-- Search Form -->
-    <form id="searchForm" class="form-inline mb-3" method="GET" action="{{ url_for('my_favourites') }}">
+    <form id="searchForm" class="form-inline mb-3" method="GET" action="{{ url_for('routes.my_favourites') }}">
         <div class="row">
             <div class="col-auto">
                 <label for="searchMyFavourites" class="visually-hidden">Search My Favourites</label>
@@ -47,7 +47,7 @@
                     {% endif %}
                 </td>
                 <td>
-                    <a href="{{ url_for('get_recipe_details', recipe_id=recipe.recipeID) }}"
+                    <a href="{{ url_for('routes.get_recipe_details', recipe_id=recipe.recipeID) }}"
                        class="btn btn-info btn-sm"><i class="fa fa-eye"></i></a>
                 </td>
             </tr>

@@ -34,7 +34,7 @@
         </p>
         {% if username==recipe.username %}
         <div class="col-md-6">
-            <a href="{{ url_for('edit_recipe', recipe_id=recipe.recipeID) }}"
+            <a href="{{ url_for('routes.edit_recipe', recipe_id=recipe.recipeID) }}"
                class="btn btn-warning btn-sm"><i class="fa fa-pen"></i> Edit
             </a>
             <button type="submit" class="btn btn-danger btn-sm" data-bs-toggle="modal"
@@ -110,7 +110,7 @@
                 </button>
             </div>
             <div class="modal-body">
-                <form id="rateRecipeForm" method="POST" action="{{ url_for('add_rating') }}">
+                <form id="rateRecipeForm" method="POST" action="{{ url_for('routes.add_rating') }}">
                     <div class="form-group">
                         <label for="rating">Rating (1-5): <span id="currentRating">1</span></label>
                         <input type="range" class="form-control-range" id="rating" name="rating" min="1" max="5"
@@ -146,7 +146,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <form id="deleteRecipeForm" method="post"
-                      action="{{ url_for('delete_recipe', recipe_id=recipe.recipeID) }}">
+                      action="{{ url_for('routes.delete_recipe', recipe_id=recipe.recipeID) }}">
                     <button type="submit" class="btn btn-danger">Delete</button>
                 </form>
             </div>

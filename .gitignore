@@ -124,6 +124,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.flaskenv
 env/
 venv/
 ENV/
@@ -163,4 +164,4 @@ cython_debug/
 
 
 # scripts to prep data
-data_prep/*
+app/data_prep/*

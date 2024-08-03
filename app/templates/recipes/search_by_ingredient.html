@@ -18,7 +18,7 @@
                     <p class="card-text">{{ recipe.description }}</p>
                     <p class="card-text">Average Rating: {{ recipe.averageRating }}</p>
                     <p class="card-text">Rating Count: {{ recipe.ratingCount }}</p>
-                    <a href="{{ url_for('get_recipe_details', recipe_id=recipe.recipeID) }}" class="btn btn-primary">View
+                    <a href="{{ url_for('routes.get_recipe_details', recipe_id=recipe.recipeID) }}" class="btn btn-primary">View
                         Recipe</a>
                 </div>
             </div>
@@ -32,7 +32,7 @@
             {% if page > 1 %}
             <li class="page-item">
                 <a class="page-link"
-                   href="{{ url_for('search_by_ingredient', page=page-1, ingredients=ingredients, search_option=search_option) }}"
+                   href="{{ url_for('routes.search_by_ingredient', page=page-1, ingredients=ingredients, search_option=search_option) }}"
                    aria-label="Previous">
                     <span aria-hidden="true">&laquo;</span>
                 </a>
@@ -41,14 +41,14 @@
             {% for p in range(1, total_pages + 1) %}
             <li class="page-item {% if p == page %}active{% endif %}">
                 <a class="page-link"
-                   href="{{ url_for('search_by_ingredient', page=p, ingredients=ingredients, search_option=search_option) }}">{{
+                   href="{{ url_for('routes.search_by_ingredient', page=p, ingredients=ingredients, search_option=search_option) }}">{{
                     p }}</a>
             </li>
             {% endfor %}
             {% if page < total_pages %}
             <li class="page-item">
                 <a class="page-link"
-                   href="{{ url_for('search_by_ingredient', page=page+1, ingredients=ingredients, search_option=search_option) }}"
+                   href="{{ url_for('routes.search_by_ingredient', page=page+1, ingredients=ingredients, search_option=search_option) }}"
                    aria-label="Next">
                     <span aria-hidden="true">&raquo;</span>
                 </a>
@@ -61,7 +61,7 @@
         <p>No recipes found for the specified ingredients.</p>
     </div>
     {% endif %}
-    <a href="{{ url_for('get_recipes') }}" class="btn btn-secondary mt-4">Back to Discover</a>
+    <a href="{{ url_for('routes.get_recipes') }}" class="btn btn-secondary mt-4">Back to Discover</a>
 </div>
 
 {% endblock %}
