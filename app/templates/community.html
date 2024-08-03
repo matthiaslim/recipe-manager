@@ -9,7 +9,8 @@
         <div class="row">
             <div class="col-auto">
                 <label for="searchComments" class="visually-hidden">Search Comments</label>
-                <input id="searchComments" class="form-control" type="text" placeholder="Search Comments.." name="search" value="{{ search_query }}">
+                <input id="searchComments" class="form-control" type="text" placeholder="Search Comments.."
+                       name="search" value="{{ search_query }}">
             </div>
             <div class="col-auto">
                 <button type="submit" class="btn btn-outline-success">Search</button>
@@ -19,7 +20,8 @@
 
     <div class="row mb-3">
         <div class="container-fluid text-end">
-            <button id="addCommentButton" type="button" class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#addCommentModal">
+            <button id="addCommentButton" type="button" class="btn btn-dark" data-bs-toggle="modal"
+                    data-bs-target="#addCommentModal">
                 <i class="fas fa-plus"></i> Add Comment
             </button>
         </div>
@@ -55,7 +57,8 @@
                 <form id="addCommentForm">
                     <div class="mb-3">
                         <label for="commentInput" class="form-label">Comment</label>
-                        <textarea class="form-control" id="commentInput" rows="3" name="comment" placeholder="Add your comment" required></textarea>
+                        <textarea class="form-control" id="commentInput" rows="3" name="comment"
+                                  placeholder="Add your comment" required></textarea>
                     </div>
                     <div class="mb-3">
                         <button type="submit" class="btn btn-primary">Submit Comment</button>
@@ -82,10 +85,12 @@
                     <!-- Replies will be dynamically added here -->
                 </div>
                 <form id="replyForm">
-                    <div style="display:flex; flex-direction: column; justify-content: center;">
-                        <textarea id="replyInput" name="reply" placeholder="Add your reply" required></textarea>
-                        <button type="submit" class="btn btn-primary">Submit Reply</button>
+                    <div class="mb-3">
+                        <label for="replyInput" class="form-label visually-hidden">Reply</label>
+                        <textarea id="replyInput" class="form-control" rows="3" name="reply"
+                                  placeholder="Add your reply" required></textarea>
                     </div>
+                    <button type="submit" class="btn btn-primary">Submit Reply</button>
                 </form>
             </div>
         </div>
