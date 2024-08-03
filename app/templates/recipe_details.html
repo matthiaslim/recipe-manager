@@ -4,6 +4,10 @@
 
 {% block content %}
 <div class="container-fluid" style="width: 80%">
+    <!-- Notification div -->
+    <div id="notification" class="alert alert-success" style="display: none;">
+        Added to favourites successfully!
+    </div>
     <div class="container-fluid">
         <div class="row">
             <div class="col">
@@ -18,14 +22,15 @@
         </div>
     </div>
 
-    {% if username==recipe.username %}
+    {% if username == recipe.username %}
     <div class="col-md-6">
         <a href="{{ url_for('edit_recipe', recipe_id=recipe.recipeID) }}"
-           class="btn btn-warning btn-sm"><i class="fa fa-pen"></i>
+           class="btn btn-info btn-sm"><i class="fa fa-pen"></i>
         </a>
-        <button type="submit" class="btn btn-danger btn-sm" data-toggle="modal"
+        <button type="submit" class="btn btn-warning btn-sm" data-toggle="modal"
                 data-target="#deleteRecipeModal"><i class="fa fa-trash"></i>
         </button>
+        <button type="button" id="addFavourites" class="btn btn-light btn-sm"><i class="fa fa-heart"></i></button>
     </div>
 
     <!-- Delete Recipe Modal -->
@@ -61,8 +66,7 @@
                     <h2 class="card-header">Ingredients</h2>
                     <div class="card-body">
                         {% for ingredient in ingredients %}
-                        <a>{{ ingredient.quantity }} {{ ingredient.unit }} {{ ingredient.ingredientName }}
-                        </a><br>
+                        <a>{{ ingredient.quantity }} {{ ingredient.unit }} {{ ingredient.ingredientName }}</a><br>
                         {% endfor %}
                     </div>
                 </div>
@@ -75,7 +79,6 @@
                         <p>Step {{direction.instructionOrder}}. {{ direction.instruction }}</p>
                         {% endfor %}
                     </div>
-
                 </div>
             </div>
         </div>
@@ -120,11 +123,11 @@
                 </button>
             </div>
             <div class="modal-body">
-                <form id="rateRecipeForm" method="POST" action="{{ url_for('add_rating')}}">
+                <form id="rateRecipeForm" method="POST" action="{{ url_for('add_rating') }}">
                     <div class="form-group">
                         <label for="rating">Rating (1-5):</label>
-                        <input type="range" class="form-control-range" id="rating" name="rating" min="1" max="5"
-                               step="1" value="1" required>
+                        <input type="range" class="form-control-range" id="rating" name="rating" min="1" max="5" step="1"
+                               value="1" required>
                         <output for="rating" id="ratingOutput">1</output> <!-- Display the current value -->
                     </div>
                     <div class="form-group">
@@ -132,11 +135,15 @@
                         <textarea class="form-control" id="comment" name="comment" rows="3"></textarea>
                     </div>
                     <!-- Hidden field to store recipe ID -->
-                    <input type="hidden" id="recipeId" name="recipe_id" value="{{recipe.recipeID}}">
+                    <input type="hidden" id="recipeId" name="recipe_id" value="{{ recipe.recipeID }}">
                     <button type="submit" class="btn btn-primary">Submit Rating</button>
                 </form>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='script.js') }}"></script>
 {% endblock %}
