@@ -163,28 +163,41 @@ def logout():
 def profile():
     if 'user_id' in session:
         user_id = session['user_id']
-        db = get_db()
-        cursor = db.cursor(dictionary=True)
+        mongo_db = get_mongo_db()
+        mysql_db = get_db()
+        cursor = mysql_db.cursor(dictionary=True)
 
         try:
+            # Fetch user information from MySQL
             cursor.execute('SELECT * FROM User WHERE userID = %s', (user_id,))
             user = cursor.fetchone()
-            if user:
-                # Fetch additional information such as recipes created, threads created, replies made
-                cursor.execute('''
-                               SELECT (SELECT COUNT(*) FROM Recipe WHERE created_by = %s) AS recipes_count, 
-                               (SELECT COUNT(*) FROM Thread WHERE created_by = %s) AS threads_count, 
-                               (SELECT COUNT(*) FROM Reply WHERE created_by = %s) AS replies_count
-                               ''', (user_id, user_id, user_id))
-                counts = cursor.fetchone()
 
-                return render_template('profile.html', user=user, recipes_count=counts['recipes_count'],
-                                       threads_count=counts['threads_count'], replies_count=counts['replies_count'])
+            if user:
+                # Fetch recipe count from MySQL
+                cursor.execute('SELECT COUNT(*) AS recipes_count FROM Recipe WHERE created_by = %s', (user_id,))
+                recipes_count = cursor.fetchone()['recipes_count']
+
+                # Fetch count of threads and replies from MongoDB
+                threads_count = mongo_db.thread.count_documents({'created_by': user_id})
+                replies_count = mongo_db.thread.aggregate([
+                    {'$unwind': '$replies'},
+                    {'$match': {'replies.userID': user_id}},
+                    {'$count': 'count'}
+                ])
+                replies_count = next(replies_count, {}).get('count', 0)
+
+                return render_template(
+                    'profile.html',
+                    user=user,
+                    recipes_count=recipes_count,
+                    threads_count=threads_count,
+                    replies_count=replies_count)
         except mysql.connector.Error as err:
             flash(f"Error: {err}", 'danger')
         finally:
             cursor.close()
-            db.close()
+            mysql_db.close()
+            close_mongo_db()
     return redirect(url_for('routes.login'))
 
 
