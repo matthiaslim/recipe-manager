@@ -32,9 +32,10 @@
             {% for comment in comments %}
             <div class="list-group-item" data-thread-id="{{ comment.threadID }}">
                 <div class="comment-header">
-                    <h5 class="comment-user">{{ comment.created_by_username }}</h5>
+                    <h5 class="comment-user comment-title"><span>{{ comment.threadName }}</span></h5>
+                    <span>{{ comment.created_by_username }}</span>
                 </div>
-                <p class="comment-text">{{ comment.threadName }}</p>
+                <p class="comment-text">{{ comment.threadContent }}</p>
                 <div class="comment-footer">
                     <span class="comment-count"><i class="fa fa-comments fa-lg"></i>{{ comment.count }}</span>
                     <button class="btn btn-warning replybutton" data-thread-id="{{ comment.threadID }}">Reply</button>
@@ -55,6 +56,11 @@
             </div>
             <div class="modal-body">
                 <form id="addCommentForm">
+                    <div class="mb-3">
+                        <label for="commentInput" class="form-label">Title</label>
+                        <input class="form-control" id="commentTitleInput" name="commentTitle"
+                                  placeholder="Title" required>
+                    </div>
                     <div class="mb-3">
                         <label for="commentInput" class="form-label">Comment</label>
                         <textarea class="form-control" id="commentInput" rows="3" name="comment"
@@ -78,6 +84,9 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <div id="commentTitle" class="comment-content">
+                    <!-- Comment title will be dynamically added here -->
+                </div>
                 <div id="commentContent" class="comment-content">
                     <!-- Comment content will be dynamically added here -->
                 </div>

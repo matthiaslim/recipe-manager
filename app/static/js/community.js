@@ -8,7 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle adding a comment
     addCommentForm.addEventListener('submit', async (event) => {
         event.preventDefault();
+        const commentTitle = document.getElementById('commentTitleInput');
         const commentInput = document.getElementById('commentInput');
+        const commentTitleText = commentTitle.value.trim();
         const commentText = commentInput.value.trim();
 
         if (commentText) {
@@ -18,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({comment: commentText})
+                    body: JSON.stringify({commentTitle: commentTitleText, comment: commentText})
                 });
 
                 if (response.ok) {
@@ -39,8 +41,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const commentElement = event.target.closest('.list-group-item');
             const commentContent = commentElement.querySelector('.comment-text').innerHTML;
             const replyContainer = document.getElementById('replyContainer');
+            const commentTitleDiv = document.getElementById('commentTitle');
             const commentContentDiv = document.getElementById('commentContent');
-
+            
+            commentTitleDiv.innerHTML = `<h5>${commentElement.querySelector('.comment-title').innerHTML}</h5>`;
             commentContentDiv.innerHTML = `<p>${commentContent}</p>`;
             replyContainer.innerHTML = ''; // Clear previous replies
 

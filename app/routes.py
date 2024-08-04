@@ -789,6 +789,7 @@ def get_threads_with_replies(search_query=None, page=1, per_page=10):
             comment = {
                 'threadID': str(thread['_id']),
                 'threadName': thread['threadName'],
+                'threadContent': thread['threadContent'],
                 'created_by': thread['created_by'],
                 'created_by_username': thread['created_by_username'],
                 'replies': thread['replies'],
@@ -837,10 +838,12 @@ def add_comment():
         flash('Invalid data', 'error')
         return redirect(url_for('routes.community'))
 
-    comment_text = data['comment']
+    comment_title = data['commentTitle']
+    comment_content = data['comment']
     try:
         db.thread.insert_one({
-            'threadName': comment_text,
+            'threadName': comment_title,
+            'threadContent': comment_content,
             'created_by': session.get('user_id'),
             'created_by_username': session.get('username'),
             'replies': [],
