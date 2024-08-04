@@ -78,7 +78,7 @@ RecipeGenie is a comprehensive web application designed to manage recipes, offer
    Run the following command to execute the `table.sql` script and initialize your database:
 
    ```bash
-   mysql -u <user> -p <foodDB> < app/data_prep/table.sql
+   mysql -u <user> -p < app/data_prep/table.sql
    ```
 
    You will be prompted to enter your MySQL password. This command sets up the database schema.
