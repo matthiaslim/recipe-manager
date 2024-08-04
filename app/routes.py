@@ -238,7 +238,7 @@ def get_recipes():
         query_params = []
         if search_term:
             search_query = "WHERE r.recipeName LIKE %s"
-            query_params.bpend(f"%{search_term}%")
+            query_params.append(f"%{search_term}%")
         else:
             search_query = ""
 
@@ -477,6 +477,7 @@ def my_favourites():
     user_id = session.get('user_id')
     if not user_id:
         flash('You need to be logged in to view your favourite recipes!', 'danger')
+        return redirect(url_for('routes.index'))
 
     try:
         redis_db = get_redis()
@@ -484,29 +485,51 @@ def my_favourites():
         favourite_recipe_ids = redis_db.smembers(f'user:{user_id}:favourites')
         favourite_recipe_ids = [int(recipe_id) for recipe_id in favourite_recipe_ids]
 
+        # Get current search term
+        search_term = request.args.get('search', '')
+
+        # Pagination setup
+        page = request.args.get(get_page_parameter(), type=int, default=1)
+        per_page = 5  # Number of recipes per page
+        offset = (page - 1) * per_page
+
+        # Build the query dynamically based on the search term
+        query_params = []
+        search_query = ""
+        if search_term:
+            search_query = "AND (r.recipeName LIKE %s)"
+            query_params.append(f"%{search_term}%")
+
         # Fetch recipe details from the database
         recipes = []
         total = 0
         if favourite_recipe_ids:
             format_strings = ','.join(['%s'] * len(favourite_recipe_ids))
-            query = f"SELECT r.recipeID, r.recipeName, r.description, u.username " \
-                    f"FROM Recipe r JOIN User u ON r.created_by = u.userID " \
-                    f"WHERE r.recipeID IN ({format_strings})"
-            cursor.execute(query, tuple(favourite_recipe_ids))
+            query = f"""
+                   SELECT r.recipeID, r.recipeName, r.description, u.username
+                   FROM Recipe r 
+                   JOIN User u ON r.created_by = u.userID
+                   WHERE r.recipeID IN ({format_strings}) {search_query}
+                   LIMIT %s OFFSET %s
+               """
+            cursor.execute(query, tuple(favourite_recipe_ids) + tuple(query_params) + (per_page, offset))
             recipes = cursor.fetchall()
 
             # Fetch total number of favourite recipes
-            cursor.execute(f"SELECT COUNT(*) as total FROM Recipe WHERE recipeID IN ({format_strings})",
-                           tuple(favourite_recipe_ids))
+            total_query = f"""
+                   SELECT COUNT(*) as total
+                   FROM Recipe r
+                   WHERE r.recipeID IN ({format_strings}) {search_query}
+               """
+            cursor.execute(total_query, tuple(favourite_recipe_ids) + tuple(query_params))
             total = cursor.fetchone()['total']
 
         # Create pagination object
-        page = request.args.get(get_page_parameter(), type=int, default=1)
-        per_page = 5  # Number of recipes per page
         pagination = Pagination(page=page, total=total, per_page=per_page, css_framework='bootstrap5')
         pagination.record_name = 'favourites'
 
-        return render_template('recipes/my_favourites.html', recipes=recipes, pagination=pagination)
+        return render_template('recipes/my_favourites.html', recipes=recipes, pagination=pagination,
+                               search_term=search_term)
 
     except Exception as e:
         flash(f'Error fetching favourite recipes: {str(e)}', 'danger')

@@ -32,6 +32,11 @@
 </div>
 
 <div class="container-fluid text-center" id="recipesContainer">
+    {% if recipes|length == 0 %}
+    <div class="container-fluid">
+        <h3>No recipes found</h3>
+    </div>
+    {% else %}
     <table id="recipeTable" class="table table-bordered table-hover">
         <thead class="table-danger">
         <tr>
@@ -64,6 +69,7 @@
     <div class="d-flex justify-content-center">
         {{ pagination.links }}
     </div>
+    {% endif %}
 </div>
 <p class="text-center">
     <button class="btn btn-warning" type="button" data-bs-toggle="collapse" data-bs-target="#searchIngredientsCollapse"
@@ -106,5 +112,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='recipe.js') }}"></script>
+<script src="{{ url_for('static', filename='js/recipe.js') }}"></script>
 {% endblock %}

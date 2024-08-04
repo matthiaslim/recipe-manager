@@ -10,130 +10,58 @@
         <div class="row">
             <div class="col-auto">
                 <label for="searchMyFavourites" class="visually-hidden">Search My Favourites</label>
-                <input type="text" id="searchMyFavourites" class="form-control" name="search_term"
-                       style="min-width: 300px; width: auto;"
-                       placeholder="Search by name or description" aria-label="search" value="{{ search_term }}">
+                <input type="text" id="searchMyFavourites" class="form-control" name="search"
+                       placeholder="Search by name" aria-label="search" value="{{ search_term }}">
             </div>
             <div class="col-auto">
                 <button type="submit" class="btn btn-outline-success ml-1">Search</button>
             </div>
         </div>
     </form>
+</div>
+<div class="container-fluid text-center" id="myFavouriteRecipeContainer">
     {% if recipes|length == 0 %}
     <div class="container-fluid">
-        <a>No favourite recipes found</a>
+        <h3>No favourite recipes found</h3>
     </div>
     {% else %}
-    <div id="myFavouriteRecipeContainer" class="table-responsive">
-        <table class="table table-bordered">
-            <thead class="thead-dark">
-            <tr>
-                <th>Name</th>
-                <th>Description</th>
-                <th>Rating</th>
-                <th>Actions</th>
-            </tr>
-            </thead>
-            <tbody class="table-light">
-            {% for recipe in recipes %}
-            <tr>
-                <td>{{ recipe.recipeName }}</td>
-                <td>{{ recipe.description }}</td>
-                <td>
-                    {% if recipe.averageRating %}
-                    {{ recipe.averageRating }} ({{ recipe.ratingCount }})
-                    {% else %}
-                    Not rated
-                    {% endif %}
-                </td>
-                <td>
-                    <a href="{{ url_for('routes.get_recipe_details', recipe_id=recipe.recipeID) }}"
-                       class="btn btn-info btn-sm"><i class="fa fa-eye"></i></a>
-                </td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    <!-- Pagination Controls -->
-    <div class="d-flex justify-content-center">
-        {{ pagination.links }}
-    </div>
-    {% endif %}
+    <table class="table table-bordered table-hover">
+        <thead class="table-danger">
+        <tr>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Rating</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for recipe in recipes %}
+        <tr>
+            <td>{{ recipe.recipeName }}</td>
+            <td>{{ recipe.description }}</td>
+            <td>
+                {% if recipe.averageRating %}
+                {{ recipe.averageRating }} ({{ recipe.ratingCount }})
+                {% else %}
+                Not rated
+                {% endif %}
+            </td>
+            <td>
+                <a href="{{ url_for('routes.get_recipe_details', recipe_id=recipe.recipeID) }}"
+                   class="btn btn-info btn-sm"><i class="fa fa-eye"></i></a>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
 </div>
+<!-- Pagination Controls -->
+<div class="d-flex justify-content-center">
+    {{ pagination.links }}
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Handle search form submission
-        document.getElementById('searchForm').addEventListener('submit', function (event) {
-            event.preventDefault();
-            searchRecipes();
-        });
-
-        // Handle pagination link clicks
-        document.querySelectorAll('.pagination a').forEach(function (link) {
-            link.addEventListener('click', function (event) {
-                event.preventDefault();
-                fetchPage(this.href);
-            });
-        });
-
-        // Function to handle dynamic search
-        function searchRecipes() {
-            const searchForm = document.getElementById('searchForm');
-            const formData = new FormData(searchForm);
-
-            fetch(searchForm.action + '?' + new URLSearchParams(formData))
-                .then(response => response.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const newContent = doc.querySelector('#myFavouriteRecipeContainer').innerHTML;
-                    const newPagination = doc.querySelector('.d-flex').innerHTML;
-
-                    document.querySelector('#myFavouriteRecipeContainer').innerHTML = newContent;
-                    document.querySelector('.d-flex').innerHTML = newPagination;
-
-                    // Re-attach event listeners to new pagination links
-                    document.querySelectorAll('.pagination a').forEach(function (link) {
-                        link.addEventListener('click', function (event) {
-                            event.preventDefault();
-                            fetchPage(this.href);
-                        });
-                    });
-                })
-                .catch(error => {
-                    console.error('Error fetching search results:', error);
-                });
-        }
-
-        // Function to handle pagination link clicks
-        function fetchPage(url) {
-            fetch(url)
-                .then(response => response.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const newContent = doc.querySelector('#myFavouriteRecipeContainer').innerHTML;
-                    const newPagination = doc.querySelector('.d-flex').innerHTML;
-
-                    document.querySelector('#myFavouriteRecipeContainer').innerHTML = newContent;
-                    document.querySelector('.d-flex').innerHTML = newPagination;
-
-                    // Re-attach event listeners to new pagination links
-                    document.querySelectorAll('.pagination a').forEach(function (link) {
-                        link.addEventListener('click', function (event) {
-                            event.preventDefault();
-                            fetchPage(this.href);
-                        });
-                    });
-                })
-                .catch(error => {
-                    console.error('Error fetching page:', error);
-                });
-        }
-    });
-</script>
+<script src="{{ url_for('static', filename='js/favourites.js') }}"></script>
 {% endblock %}
