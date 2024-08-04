@@ -28,17 +28,20 @@
     </div>
 
     <div class="row">
-        <div class="list-group" id="comments-data" data-comments="{{ comments|tojson|safe }}">
+        <div class="container-fluid" id="comments-data" data-comments="{{ comments|tojson|safe }}">
             {% for comment in comments %}
-            <div class="list-group-item" data-thread-id="{{ comment.threadID }}">
-                <div class="comment-header">
-                    <h5 class="comment-user comment-title"><span>{{ comment.threadName }}</span></h5>
-                    <span>{{ comment.created_by_username }}</span>
+            <div class="card mb-3" data-thread-id="{{ comment.threadID }}">
+                <div class="card-header comment-header">
+                    <h5 class="comment-user comment-title card-title"><span>{{ comment.threadName }}</span></h5>
+                    <span class="card-subtitle">{{ comment.created_by_username }}</span>
                 </div>
-                <p class="comment-text">{{ comment.threadContent }}</p>
-                <div class="comment-footer">
-                    <span class="comment-count"><i class="fa fa-comments fa-lg"></i>{{ comment.count }}</span>
-                    <button class="btn btn-warning replybutton" data-thread-id="{{ comment.threadID }}">Reply</button>
+                <div class="card-body">
+                    <p class="card-text comment-text">{{ comment.threadContent }}</p>
+                    <div class="comment-footer">
+                        <span class="comment-count"><i class="fa fa-comments fa-lg"></i>{{ comment.count }}</span>
+                        <button class="btn btn-warning replybutton" data-thread-id="{{ comment.threadID }}">Reply
+                        </button>
+                    </div>
                 </div>
             </div>
             {% endfor %}
@@ -59,7 +62,7 @@
                     <div class="mb-3">
                         <label for="commentInput" class="form-label">Title</label>
                         <input class="form-control" id="commentTitleInput" name="commentTitle"
-                                  placeholder="Title" required>
+                               placeholder="Title" required>
                     </div>
                     <div class="mb-3">
                         <label for="commentInput" class="form-label">Comment</label>

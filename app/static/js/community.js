@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const addCommentForm = document.getElementById('addCommentForm');
     const replyForm = document.getElementById('replyForm');
-    const addCommentButton = document.getElementById('addCommentButton');
     const commentsData = document.getElementById('comments-data');
     const replyModal = new bootstrap.Modal(document.getElementById('replyModal'));
 
@@ -38,12 +37,12 @@ document.addEventListener('DOMContentLoaded', () => {
     commentsData.addEventListener('click', (event) => {
         if (event.target.classList.contains('replybutton')) {
             const threadId = event.target.getAttribute('data-thread-id');
-            const commentElement = event.target.closest('.list-group-item');
+            const commentElement = event.target.closest('.card');
             const commentContent = commentElement.querySelector('.comment-text').innerHTML;
             const replyContainer = document.getElementById('replyContainer');
             const commentTitleDiv = document.getElementById('commentTitle');
             const commentContentDiv = document.getElementById('commentContent');
-            
+
             commentTitleDiv.innerHTML = `<h5>${commentElement.querySelector('.comment-title').innerHTML}</h5>`;
             commentContentDiv.innerHTML = `<p>${commentContent}</p>`;
             replyContainer.innerHTML = ''; // Clear previous replies
@@ -52,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchReplies(threadId);
 
             // Set up reply form submission
-            replyForm.addEventListener('submit', async (replyEvent) => {
+            replyForm.onsubmit = async (replyEvent) => {
                 replyEvent.preventDefault();
                 const replyInput = document.getElementById('replyInput');
                 const replyText = replyInput.value.trim();
@@ -80,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         console.error('Error:', error);
                     }
                 }
-            });
+            };
 
             replyModal.show();
         }

@@ -1,7 +1,7 @@
 import math
 import mysql.connector
 
-from .db import get_db, get_redis, get_mongo_db
+from .db import get_db, get_redis, get_mongo_db, close_mongo_db
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_paginate import Pagination, get_page_parameter
 from bcrypt import hashpw, gensalt, checkpw
@@ -800,6 +800,8 @@ def get_threads_with_replies(search_query=None, page=1, per_page=10):
     except Exception as e:
         flash(f"Error fetching comments from database: {e}", 'error')
         return redirect(url_for('routes.community'))
+    finally:
+        close_mongo_db()
 
 
 @bp.route('/replies/<thread_id>', methods=['GET'])
@@ -853,6 +855,8 @@ def add_comment():
     except Exception as e:
         flash(f"Error inserting into database: {e}", 'error')
         return redirect(url_for('routes.community'))
+    finally:
+        close_mongo_db()
 
 
 @bp.route('/add_reply', methods=['POST'])
