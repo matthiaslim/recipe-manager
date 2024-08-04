@@ -163,8 +163,8 @@ cython_debug/
 #.idea/
 
 
-# scripts to prep data
-app/data_prep/*
+# scripts to insert data
+app/data_prep/InsertEverything.sql
 
 # ignore Redis RDB files
 .rdb

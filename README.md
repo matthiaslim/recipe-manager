@@ -26,6 +26,8 @@ RecipeGenie is a comprehensive web application designed to manage recipes, offer
 
 ### Installation
 
+#### For Unix-based Systems (Linux, macOS)
+
 1. **Clone the repository**
 
    ```bash
@@ -37,7 +39,7 @@ RecipeGenie is a comprehensive web application designed to manage recipes, offer
 
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   source venv/bin/activate
    ```
 
 3. **Install dependencies**
@@ -71,9 +73,84 @@ RecipeGenie is a comprehensive web application designed to manage recipes, offer
 
    Replace `username` and `password` with your actual MySQL credentials.
 
-5. **Start the Application**
+5. **Execute the SQL Script**
+
+   Run the following command to execute the `table.sql` script and initialize your database:
 
    ```bash
+   mysql -u <user> -p <foodDB> < app/data_prep/table.sql
+   ```
+
+   You will be prompted to enter your MySQL password. This command sets up the database schema.
+
+6. **Start the Application**
+
+   ```bash
+   flask run
+   ```
+
+   The application will be available at `http://127.0.0.1:5000`.
+
+#### For Windows
+
+1. **Clone the repository**
+
+   ```cmd
+   git clone https://github.com/matthiaslim/recipe-manager.git
+   cd recipe-genie
+   ```
+
+2. **Create and activate a virtual environment**
+
+   ```cmd
+   python -m venv venv
+   venv\Scripts\activate
+   ```
+
+3. **Install dependencies**
+
+   ```cmd
+   pip install -r requirements.txt
+   ```
+
+4. **Configure Environment Variables**
+
+   Create a `.env` file in the root directory of your project and add the following variables:
+
+   ```env
+   MYSQL_HOST=localhost
+   MYSQL_USER=<user>
+   MYSQL_PASSWORD=<password>
+   MYSQL_DB=foodDB
+   REDIS_HOST=localhost
+   REDIS_PORT=6379
+   REDIS_DB=0
+   MONGO_URI=mongodb://localhost:27017
+   MONGO_DB=foodDB
+   ```
+
+   Create a `.flaskenv` file in the root directory of your project and add the following variables:
+
+   ```env
+   FLASK_APP=app:create_app
+   FLASK_ENV=development
+   ```
+
+   Replace `username` and `password` with your actual MySQL credentials.
+
+5. **Execute the SQL Script**
+
+   Run the following command to execute the `table.sql` script and initialize your database:
+
+   ```cmd
+   mysql -u <user> -p <foodDB> < app\data_prep\table.sql
+   ```
+
+   You will be prompted to enter your MySQL password. This command sets up the database schema.
+
+6. **Start the Application**
+
+   ```cmd
    flask run
    ```
 
@@ -89,6 +166,7 @@ RecipeGenie is a comprehensive web application designed to manage recipes, offer
 - **Internal Server Error**: Check application logs for detailed error messages. Ensure all services (MySQL, Redis, MongoDB) are running and accessible.
 - **Search Functionality Issues**: Ensure Redis is properly configured and running.
 - **Community Features Issues**: Check MongoDB connections and document structures for proper setup.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
