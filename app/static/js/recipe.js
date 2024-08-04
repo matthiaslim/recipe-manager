@@ -90,12 +90,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Save search term on form submission
     document.getElementById('searchForm').addEventListener('submit', function (event) {
-        // Prevent form submission if the search term is cleared
         const searchTerm = document.getElementById('searchRecipes').value;
         if (searchTerm.trim() === '') {
             event.preventDefault(); // Stop form submission if search term is empty
             return;
         }
         saveSearchTerm(searchTerm);
+    });
+
+    // Handle Enter key press within the input field
+    document.getElementById('searchRecipes').addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault(); // Prevent the default form submission
+            const searchTerm = document.getElementById('searchRecipes').value;
+            if (searchTerm.trim() !== '') {
+                saveSearchTerm(searchTerm);
+                document.getElementById('searchForm').submit(); // Programmatically submit the form
+            }
+        }
     });
 });
