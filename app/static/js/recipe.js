@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function () {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ term: term })
+            body: JSON.stringify({term: term})
         }).then(() => loadPreviousSearches());
     }
 
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     // Create the remove button
                     const removeButton = document.createElement('button');
-                    removeButton.className = 'btn btn-outline-dark btn-sm';
+                    removeButton.className = 'btn btn-outline-dark';
                     removeButton.innerHTML = '<i class="fas fa-times"></i>';
                     removeButton.addEventListener('click', (event) => {
                         event.stopPropagation(); // Prevent triggering parent click
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     previousSearches.appendChild(item);
 
                     // Add an event listener to set the search term on click (excluding the remove button)
-                    item.addEventListener('click', function(event) {
+                    item.addEventListener('click', function (event) {
                         // Ensure the event is not triggered by clicking the remove button
                         if (!event.target.closest('.btn-outline-dark')) {
                             document.getElementById('searchRecipes').value = search;
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function () {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ term: term })
+            body: JSON.stringify({term: term})
         }).then(() => loadPreviousSearches());
     }
 
