@@ -794,7 +794,7 @@ def get_threads_with_replies(search_query=None, page=1, per_page=10):
                 'replies': thread['replies'],
                 'count': len(thread['replies'])
             }
-            comment_list.append(comment)
+            comment_list.insert(0, comment)
         return comment_list
     except Exception as e:
         flash(f"Error fetching comments from database: {e}", 'error')
