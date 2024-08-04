@@ -85,6 +85,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Refresh the page when the reply modal is closed
+    document.getElementById('replyModal').addEventListener('hidden.bs.modal', () => {
+        window.location.reload();
+    });
+
     async function fetchReplies(threadId) {
         try {
             const response = await fetch(`/replies/${threadId}`); // Define this endpoint to get replies
