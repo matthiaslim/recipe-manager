@@ -30,12 +30,14 @@
     <div class="row">
         <div class="container-fluid" id="comments-data" data-comments="{{ comments|tojson|safe }}">
             {% for comment in comments %}
-            <div class="card mb-3" data-thread-id="{{ comment.threadID }}">
+            <div class="card mb-3" data-thread-id="{{ comment.threadID }}"
+                 data-created-time="{{ comment.created_time }}">
                 <div class="card-header comment-header">
-                    <h5 class="comment-user comment-title card-title"><span>{{ comment.threadName }}</span></h5>
-                    <span class="card-subtitle">{{ comment.created_by_username }}</span>
+                    <h5 class="card-title">{{ comment.created_by_username }}</h5>
+                    <span class="comment-time" id="comment-time-{{ comment.threadID }}"></span>
                 </div>
                 <div class="card-body">
+                    <h3 class="comment-user comment-title card-title"><span>{{ comment.threadName }}</span></h3>
                     <p class="card-text comment-text">{{ comment.threadContent }}</p>
                     <div class="comment-footer">
                         <span class="comment-count"><i class="fa fa-comments fa-lg"></i>{{ comment.count }}</span>
@@ -80,7 +82,7 @@
 
 <!-- Reply Modal -->
 <div class="modal fade" id="replyModal" tabindex="-1" aria-labelledby="replyModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h1 class="modal-title fs-5" id="replyModalLabel">Replies</h1>

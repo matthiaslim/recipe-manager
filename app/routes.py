@@ -1,6 +1,7 @@
 import math
 import mysql.connector
-
+import pytz
+from datetime import datetime
 from .db import get_db, get_redis, get_mongo_db, close_mongo_db
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_paginate import Pagination, get_page_parameter
@@ -783,20 +784,27 @@ def get_threads_with_replies(search_query=None, page=1, per_page=10):
 
         skip = (page - 1) * per_page
         threads = db.thread.find(query).skip(skip).limit(per_page)
-
         comment_list = []
         for thread in threads:
+            created_time = thread['created_time']
+            if isinstance(created_time, str):
+                created_time = datetime.fromisoformat(created_time)
+            if created_time.tzinfo is None:
+                created_time = pytz.utc.localize(created_time)
+
             comment = {
                 'threadID': str(thread['_id']),
                 'threadName': thread['threadName'],
                 'threadContent': thread['threadContent'],
                 'created_by': thread['created_by'],
                 'created_by_username': thread['created_by_username'],
+                'created_time': created_time.isoformat(),  # Ensure it's in ISO format
                 'replies': thread['replies'],
                 'count': len(thread['replies'])
             }
             comment_list.insert(0, comment)
         return comment_list
+
     except Exception as e:
         flash(f"Error fetching comments from database: {e}", 'error')
         return redirect(url_for('routes.community'))
@@ -848,6 +856,7 @@ def add_comment():
             'threadContent': comment_content,
             'created_by': session.get('user_id'),
             'created_by_username': session.get('username'),
+            'created_time': datetime.now(pytz.utc),
             'replies': [],
         })
         flash('Comment added successfully', 'success')
@@ -876,7 +885,14 @@ def add_reply():
         if comment_index is not None and reply_text and user_id:
             db.thread.update_one(
                 {'_id': ObjectId(comment_index)},
-                {'$push': {'replies': {'userID': user_id, 'user': session.get('username'), 'reply': reply_text}}}
+                {'$push': {
+                    'replies': {
+                        'userID': user_id,
+                        'user': session.get('username'),
+                        'reply': reply_text,
+                        'created_time': datetime.now(pytz.utc)
+                    }
+                }}
             )
             flash('Reply added successfully', 'success')
             return redirect(url_for('routes.community'))
@@ -886,6 +902,8 @@ def add_reply():
     except Exception as e:
         flash(f"Error inserting into database: {e}", 'error')
         return redirect(url_for('routes.community'))
+    finally:
+        close_mongo_db()
 
 
 @bp.route('/add_rating', methods=['POST'])

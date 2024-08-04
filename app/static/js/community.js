@@ -4,6 +4,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const commentsData = document.getElementById('comments-data');
     const replyModal = new bootstrap.Modal(document.getElementById('replyModal'));
 
+    // Function to calculate time difference
+    function timeDifference(current, previous) {
+        const msPerMinute = 60 * 1000;
+        const msPerHour = msPerMinute * 60;
+        const msPerDay = msPerHour * 24;
+        const msPerMonth = msPerDay * 30;
+        const msPerYear = msPerDay * 365;
+
+        const elapsed = current - previous;
+
+        if (elapsed < msPerMinute) {
+            return Math.round(elapsed / 1000) + ' seconds ago';
+        } else if (elapsed < msPerHour) {
+            return Math.round(elapsed / msPerMinute) + ' min ago';
+        } else if (elapsed < msPerDay) {
+            return Math.round(elapsed / msPerHour) + ' hr ago';
+        } else if (elapsed < msPerMonth) {
+            return Math.round(elapsed / msPerDay) + ' days ago';
+        } else if (elapsed < msPerYear) {
+            return Math.round(elapsed / msPerMonth) + ' mth ago';
+        } else {
+            return Math.round(elapsed / msPerYear) + ' yr ago';
+        }
+    }
+
+    // Update the time difference for each comment
+    document.querySelectorAll('.card').forEach(card => {
+        const createdTime = new Date(card.getAttribute('data-created-time'));
+        const currentTime = new Date();
+        const timeDiff = timeDifference(currentTime, createdTime);
+        card.querySelector('.comment-time').innerText = timeDiff;
+    });
+
     // Handle adding a comment
     addCommentForm.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -70,8 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
 
                         if (response.ok) {
-                            replyInput.value = ''; // Clear input
-                            fetchReplies(threadId); // Refresh replies
+                            replyInput.value = ''; // Clear reply input
+                            fetchReplies(threadId); // Reload replies
                         } else {
                             console.error('Error adding reply');
                         }
@@ -85,22 +118,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Refresh the page when the reply modal is closed
-    document.getElementById('replyModal').addEventListener('hidden.bs.modal', () => {
-        window.location.reload();
-    });
-
+    // Fetch replies for a given thread and display them
     async function fetchReplies(threadId) {
         try {
-            const response = await fetch(`/replies/${threadId}`); // Define this endpoint to get replies
+            const response = await fetch(`/replies/${threadId}`);
             if (response.ok) {
                 const data = await response.json();
                 const replyContainer = document.getElementById('replyContainer');
-                replyContainer.innerHTML = data.replies.map(reply => `
-                    <div class="reply">
-                        <p><strong>${reply.user}:</strong> ${reply.reply}</p>
-                    </div>
-                `).join('');
+
+                if (data.replies) {
+                    replyContainer.innerHTML = ''; // Clear existing replies
+                    data.replies.forEach(reply => {
+                        const replyElement = document.createElement('div');
+                        replyElement.className = 'reply card mb-2';
+                        replyElement.innerHTML = `
+                            <div class="card-body">
+                                <h6 class="card-subtitle mb-2 text-muted">${reply.user}</h6>
+                                <p class="card-text">${reply.reply}</p>
+                                <p class="card-text"><small class="text-muted">${timeDifference(new Date(), new Date(reply.created_time))}</small></p>
+                            </div>
+                        `;
+                        replyContainer.appendChild(replyElement);
+                    });
+                }
             } else {
                 console.error('Error fetching replies');
             }
