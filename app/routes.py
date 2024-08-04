@@ -514,7 +514,7 @@ def my_favourites():
         if favourite_recipe_ids:
             format_strings = ','.join(['%s'] * len(favourite_recipe_ids))
             query = f"""
-                   SELECT r.recipeID, r.recipeName, r.description, u.username
+                   SELECT r.recipeID, r.recipeName, r.description, r.averageRating, r.ratingCount, u.username
                    FROM Recipe r 
                    JOIN User u ON r.created_by = u.userID
                    WHERE r.recipeID IN ({format_strings}) {search_query}

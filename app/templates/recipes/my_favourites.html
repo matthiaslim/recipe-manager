@@ -40,7 +40,7 @@
             <td>{{ recipe.recipeName }}</td>
             <td>{{ recipe.description }}</td>
             <td>
-                {% if recipe.averageRating %}
+                {% if recipe.ratingCount != 0 %}
                 {{ recipe.averageRating }} ({{ recipe.ratingCount }})
                 {% else %}
                 Not rated
