@@ -50,7 +50,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h1 class="modal-header fs-5" id="addCommentModalLabel">Add Comment</h1>
+                <h1 class="modal-title fs-5" id="addCommentModalLabel">Add Comment</h1>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -61,7 +61,7 @@
                                   placeholder="Add your comment" required></textarea>
                     </div>
                     <div class="mb-3">
-                        <button type="submit" class="btn btn-primary">Submit Comment</button>
+                        <button type="submit" class="btn btn-primary">Submit</button>
                     </div>
                 </form>
             </div>
@@ -90,7 +90,7 @@
                         <textarea id="replyInput" class="form-control" rows="3" name="reply"
                                   placeholder="Add your reply" required></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary">Submit Reply</button>
+                    <button type="submit" class="btn btn-primary">Reply</button>
                 </form>
             </div>
         </div>
@@ -99,5 +99,5 @@
 
 {% endblock %}
 {% block scripts %}
-<script src="{{ url_for('static', filename='community.js') }}"></script>
+<script src="{{ url_for('static', filename='js/community.js') }}"></script>
 {% endblock %}

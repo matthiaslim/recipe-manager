@@ -35,15 +35,6 @@ form {
     justify-content: center;
 }
 
-section {
-    width: auto;
-    /* border: 1px solid #2d2d2d; */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
-
 .table {
     width: 80%;
     margin: 20px auto;
@@ -51,19 +42,6 @@ section {
 
 .table th, .table td {
     vertical-align: middle;
-}
-
-.list-group {
-    width: 99.5%;
-}
-
-.list-group-item {
-    /* border: 1px solid red; */
-    border-bottom: 2px solid black;
-    border-radius: 5px;
-    padding: 15px;
-    margin-bottom: 5px;
-    background-color: #eeeeee;
 }
 
 .comment-header {

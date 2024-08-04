@@ -38,32 +38,40 @@ def index():
 def save_search():
     term = request.json.get('term')
     user_id = session.get('user_id')
-    if term:
+    if term and user_id:
         r = get_redis()
         key = f'previous_searches:{user_id}'
         r.lrem(key, 0, term)
         r.lpush(key, term)
-        r.ltrim(key, 0, 9)
+        r.ltrim(key, 0, 9)  # Limit to 10 recent searches
     return '', 204
 
 
 @bp.route('/load_searches', methods=['GET'])
 def load_searches():
-    user_id = session.get('user_id')
-    if user_id:
-        r = get_redis()
-        key = f'previous_searches:{user_id}'
-        searches = r.lrange(key, 0, -1)
-        return jsonify([search for search in searches])
+    try:
+        user_id = session.get('user_id')
+        if user_id:
+            r = get_redis()
+            key = f'previous_searches:{user_id}'
+            searches = r.lrange(key, 0, -1)
+            # Decode bytes to string
+            searches = [search for search in searches]
+            return jsonify(searches)
+        return jsonify([])  # Return empty list if no user_id found
+    except Exception as e:
+        print(f"Error loading searches: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
 
 
-@bp.route('/clear_searches', methods=['POST'])
-def clear_searches():
+@bp.route('/remove_search', methods=['POST'])
+def remove_search():
+    term = request.json.get('term')
     user_id = session.get('user_id')
-    if user_id:
+    if term and user_id:
         r = get_redis()
         key = f'previous_searches:{user_id}'
-        r.delete(key)  # Delete the key and its associated data
+        r.lrem(key, 0, term)  # Remove the specific search term
     return '', 204
 
 

@@ -1,7 +1,7 @@
-from flask import Flask, g, current_app
+from flask import Flask, current_app
 import click
 from flask.cli import with_appcontext
-from .db import get_db, close_db, get_redis, close_redis, get_mongo_db, close_mongo_db, create_database
+from .db import get_db, close_db, close_redis, close_mongo_db, create_database
 
 
 def create_app():

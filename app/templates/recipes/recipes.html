@@ -5,19 +5,28 @@
 {% block content %}
 <div class="container-fluid" style="width: 80%;">
     <h1 class="text-center">{{ page_title }}</h1>
-    <form id="searchForm" action="{{ url_for('routes.get_recipes') if is_discover else url_for('routes.my_recipes') }}" method="GET">
-        <div class="row">
-            <div class="col-auto">
+    <form id="searchForm" action="{{ url_for('routes.get_recipes') if is_discover else url_for('routes.my_recipes') }}"
+          method="GET">
+        <div class="row mb-3">
+            <div class="col-md-11">
                 <label for="searchRecipes" class="visually-hidden">Search Recipes</label>
-                <input id="searchRecipes" list="previousSearches" class="form-control" type="text"
-                       placeholder="Search Recipes.." name="search" value="{{ search_term }}">
+                <input id="searchRecipes" class="form-control" type="text"
+                       placeholder="Search Recipes.." name="search" value="{{ search_term }}" autocomplete="off"
+                       data-bs-toggle="collapse" data-bs-target="#previousSearchesContainer">
                 {% if user_logged_in %}
-                <datalist id="previousSearches">
-                    <!-- Options will be dynamically loaded here -->
-                </datalist>
+                <div id="previousSearchesContainer" class="container-fluid collapse">
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            Recently Searched
+                        </div>
+                        <ul class="list-group list-group-flush" id="previousSearches">
+                            <!-- Recent searches will be dynamically loaded here -->
+                        </ul>
+                    </div>
+                </div>
                 {% endif %}
             </div>
-            <div class="col-auto">
+            <div class="col-md-1">
                 <button type="submit" class="btn btn-outline-success">Search</button>
             </div>
         </div>
