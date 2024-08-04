@@ -18,7 +18,7 @@ RecipeGenie is a comprehensive web application designed to manage recipes, offer
 
 ### Prerequisites
 
-- Python 3.8+
+- Python 3.11+
 - MySQL Server (see [MySQL Installation Guide](https://dev.mysql.com/doc/mysql-installation-excerpt/5.7/en/))
 - Redis Server (see [Redis Installation Guide](https://redis.io/docs/latest/operate/oss_and_stack/install/install-redis/))
 - MongoDB Server (see [MongoDB Installation Guide](https://www.mongodb.com/docs/manual/administration/install-community/))
