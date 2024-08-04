@@ -6,3 +6,4 @@ python-dotenv==1.0.1
 redis==5.0.8
 flask-redis==0.4.0
 pymongo==4.8.0
+pytz==2024.1
